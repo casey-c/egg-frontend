@@ -25,10 +25,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-        mainwindow.cpp
+        mainwindow.cpp \
+    node.cpp \
+    canvas.cpp \
+    quantumbool.cpp
 
 HEADERS += \
-        mainwindow.h
+        mainwindow.h \
+    node.h \
+    canvas.h \
+    quantumbool.h
 
 FORMS += \
         mainwindow.ui

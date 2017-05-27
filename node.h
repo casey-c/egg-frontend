@@ -85,7 +85,7 @@ private:
     ///////////////
 
     // Private constructor
-    Node(Canvas* can, Node* par, NodeType type, QPointF pt);
+    Node(Canvas* can, Node* par, NodeType t, QPointF pt);
 
     // Graphics
     QRectF boundingRect() const override;
@@ -96,6 +96,7 @@ private:
                const QStyleOptionGraphicsItem* option,
                QWidget* widget) override;
 
+    // Moving
     QVariant itemChange(GraphicsItemChange change,
                         const QVariant &value) override;
 

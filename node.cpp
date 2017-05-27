@@ -109,6 +109,28 @@ Node* Node::addChildCut(QPointF pt)
     return newChild;
 }
 
+/////////////////
+/// Highlight ///
+/////////////////
+
+/*
+ * Highlight this node
+ */
+void Node::setAsHighlight()
+{
+    highlighted = true;
+    update();
+}
+
+/*
+ * Clear highlighting from this node
+ */
+void Node::removeHighlight()
+{
+    highlighted = false;
+    update();
+}
+
 ////////////////
 /// Graphics ///
 ////////////////

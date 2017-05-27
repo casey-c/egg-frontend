@@ -23,6 +23,8 @@ private:
 
     QPointF lastMousePos;
 
+    QGraphicsScene* scene;
+
     ///////////////
     /// Methods ///
     ///////////////

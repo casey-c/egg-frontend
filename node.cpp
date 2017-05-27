@@ -1,6 +1,15 @@
+#include "canvas.h"
 #include "node.h"
 
+#include <QPainter>
+#include <QGraphicsDropShadowEffect>
+#include <QGraphicsSceneHoverEvent>
+#include <QGraphicsSceneMouseEvent>
+#include <QtCore/QtMath>
+#include <QDebug>
+
 #define GRID_SPACING 16
+#define STROKE_ADJ 2
 
 // Forward declarations for helper functions (implementation located at end)
 QPointF snapPoint(const QPointF &pt);
@@ -48,6 +57,45 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     hasPotentialBounds(false)
 {
 
+    // Colors
+    gradDefault = QRadialGradient( upperLeftPt.x() - 3,
+                                   upperLeftPt.y() - 3,
+                                   (dist(upperLeftPt, bottomRightPt) / 4 ));
+    gradDefault.setColorAt(0, QColor(255, 255, 255));
+    gradDefault.setColorAt(1, QColor(185, 185, 185));
+
+    gradHighlighted = QRadialGradient( upperLeftPt.x() - 3,
+                                       upperLeftPt.y() - 3,
+                                       (dist(upperLeftPt, bottomRightPt) / 4));
+    gradHighlighted.setColorAt(0, QColor(240, 240, 240));
+    gradHighlighted.setColorAt(1, QColor(210, 210, 210));
+
+    gradClicked = QRadialGradient( upperLeftPt.x() - 3,
+                                   upperLeftPt.y() - 3,
+                                   (dist(upperLeftPt, bottomRightPt) / 4 ));
+    gradClicked.setColorAt(0, QColor(210, 210, 210));
+    gradClicked.setColorAt(1, QColor(240, 240, 240));
+
+    shadow.setEnabled(true);
+
+    if ( isRoot() )
+    {
+
+    }
+    else if ( isCut() )
+    {
+        setFlag(ItemIsMovable);
+        setFlag(ItemSendsGeometryChanges);
+        setCacheMode(DeviceCoordinateCache);
+        setAcceptHoverEvents(true);
+
+        QPointF snapped = snapPoint(pt);
+        upperLeftPt.setX(snapped.x());
+        upperLeftPt.setX(snapped.y());
+
+        bottomRightPt.setX(snapped.x() + 4 * GRID_SPACING);
+        bottomRightPt.setY(snapped.y() + 4 * GRID_SPACING);
+    }
 }
 
 /*
@@ -72,22 +120,17 @@ Node* Node::addChildCut(QPointF pt)
  * include the stroke and any potential shadows; this is not just the center
  * area.
  *
- * Thus, upperLeftPt is the absolute upper left pixel that needs to be drawn (in
- * this Node's relative coordinate system); similarly for the bottom right.
- *
- * upperLeftPt starts at (0,0); however, upon adding children to this node, they
- * may force this point anywhere arbitrarily. When this happens, upperLeftPt.x()
- * will be one GRID_SPACING to the left of the minX of all its children.
- *
- * bottomRightPt starts at (4*GRID_SPACING, 4*GRID_SPACING) for an empty cut.
- * Like the upperLeftPt, it too is dependent on the position of child Nodes.
- *
  * The actual collisionBounds rectangle is smaller than this boundingRect, as it
  * ignores the stroke or other extra spacing required.
  */
 QRectF Node::boundingRect() const
 {
-    return QRectF(upperLeftPt, bottomRightPt);
+    QPointF ul(upperLeftPt.x() - STROKE_ADJ,
+               upperLeftPt.y() - STROKE_ADJ);
+    QPointF br(upperLeftPt.x() - STROKE_ADJ,
+               upperLeftPt.y() - STROKE_ADJ);
+
+    return QRectF(ul, br);
 }
 
 /*
@@ -127,7 +170,22 @@ void Node::paint(QPainter* painter,
                  const QStyleOptionGraphicsItem* option,
                  QWidget* widget)
 {
+    Q_UNUSED(option)
+    Q_UNUSED(widget)
 
+    QRectF rect;
+
+    if ( isCut() )
+        rect = QRectF(boundingRect().topLeft(), boundingRect().bottomRight());
+
+    if (mouseDown)
+        painter->setBrush(QBrush(gradClicked));
+    else if (highlighted)
+        painter->setBrush(QBrush(gradHighlighted));
+    else
+        painter->setBrush(QBrush(gradDefault));
+
+    painter->drawRoundedRect(rect, 5, 5);
 }
 
 //////////////
@@ -140,9 +198,21 @@ void Node::paint(QPainter* painter,
  * Control the behavior of the default item movement supplied by the
  * ItemIsMovable flag.
  */
-QVariant itemChange(GraphicsItemChange change,
-                    const QVariant &value)
+QVariant Node::itemChange(GraphicsItemChange change,
+                          const QVariant &value)
 {
+    if ( change == ItemPositionChange && scene() )
+    {
+        QPointF snapped = snapPoint(value.toPointF());
+        qreal delX = snapped.x() - pos().x();
+        qreal delY = snapped.y() - pos().y();
+
+        if ( delX == 0 && delY == 0 )
+            return snapped;
+
+        // check for collision
+        return snapped;
+    }
 
 }
 
@@ -164,7 +234,9 @@ QVariant itemChange(GraphicsItemChange change,
  */
 void Node::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 {
+    lastHoverPos = event->pos();
 
+    QGraphicsObject::hoverMoveEvent(event);
 }
 
 /*
@@ -172,7 +244,12 @@ void Node::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
  */
 void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    mouseOffset = event->pos();
+    shadow.setEnabled(true);
+    mouseDown = true;
+    update();
 
+    QGraphicsObject::mousePressEvent(event);
 }
 
 /*
@@ -180,7 +257,11 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
  */
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
+    mouseDown = false;
+    shadow.setEnabled(false);
+    update();
 
+    QGraphicsObject::mouseReleaseEvent(event);
 }
 
 /*
@@ -188,7 +269,8 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
  */
 void Node::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
-
+    canvas->setHighlight(this);
+    QGraphicsObject::hoverEnterEvent(event);
 }
 
 /*
@@ -196,7 +278,8 @@ void Node::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
  */
 void Node::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
-
+    canvas->setHighlight(parent);
+    QGraphicsObject::hoverLeaveEvent(event);
 }
 
 ///////////////
@@ -208,7 +291,35 @@ void Node::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
  */
 QPointF snapPoint(const QPointF &pt)
 {
+    int x = pt.x() - (GRID_SPACING / 2);
+    int y = pt.y() - (GRID_SPACING / 2);
 
+    // Workaround for negative points
+    bool negX = false;
+    bool negY = false;
+
+    if (x < 0)
+    {
+        negX = true;
+        x = -x;
+    }
+    if (y < 0)
+    {
+        negY = true;
+        y = -y;
+    }
+
+    // Perform the snap
+    x = ((x + GRID_SPACING / 2) / GRID_SPACING) * GRID_SPACING;
+    y = ((y + GRID_SPACING / 2) / GRID_SPACING) * GRID_SPACING;
+
+    // Revert negation
+    if (negX)
+        x = -x;
+    if (negY)
+        y = -y;
+
+    return QPointF(x, y);
 }
 
 /*
@@ -216,7 +327,8 @@ QPointF snapPoint(const QPointF &pt)
  */
 qreal dist(const QPointF &a, const QPointF &b)
 {
-
+    return qSqrt( qPow( ( a.x() - b.x() ), 2) +
+                  qPow( ( a.y() - b.y() ), 2) );
 }
 
 /*

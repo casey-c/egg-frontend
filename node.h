@@ -1,11 +1,13 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include "quantumbool.h"
+
 #include <QGraphicsObject>
 #include <QRadialGradient>
+#include <QGraphicsDropShadowEffect>
 
 class Canvas;
-class QuantumBool;
 
 enum NodeType
 {
@@ -66,6 +68,8 @@ private:
     QRadialGradient gradDefault;
     QRadialGradient gradHighlighted;
     QRadialGradient gradClicked;
+
+    QGraphicsDropShadowEffect shadow;
 
     // Important points
     QPointF lastHoverPos;

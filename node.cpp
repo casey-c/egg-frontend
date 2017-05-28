@@ -11,6 +11,10 @@
 #define GRID_SPACING 16
 #define STROKE_ADJ 2
 
+#define EMPTY_CUT_SIZE (4 * GRID_SPACING)
+
+#define COLLISION_OFFSET (GRID_SPACING / 2) + 1
+
 // Forward declarations for helper functions (implementation located at end)
 QPointF snapPoint(const QPointF &pt);
 qreal dist(const QPointF &a, const QPointF &b);
@@ -42,41 +46,20 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     canvas(can),
     parent(par),
     type(t),
-    upperLeftPt(0,0),
-    bottomRightPt(0,0),
-    translateOffsetX(0),
-    translateOffsetY(0),
     highlighted(false),
     mouseDown(false),
     lastHoverPos(0, 0),
     mouseOffset(0, 0),
-    minX(0),
-    minY(0),
-    maxX(0),
-    maxY(0),
-    hasPotentialBounds(false)
+    width(0),
+    height(0),
+    deltaPosShift(0, 0),
+    potentialPosShift(0, 0),
+    hasDifferentPotentialBounds(false)
 {
 
-    // Colors
-    gradDefault = QRadialGradient( upperLeftPt.x() - 3,
-                                   upperLeftPt.y() - 3,
-                                   (dist(upperLeftPt, bottomRightPt) / 4 ));
-    gradDefault.setColorAt(0, QColor(255, 255, 255));
-    gradDefault.setColorAt(1, QColor(185, 185, 185));
 
-    gradHighlighted = QRadialGradient( upperLeftPt.x() - 3,
-                                       upperLeftPt.y() - 3,
-                                       (dist(upperLeftPt, bottomRightPt) / 4));
-    gradHighlighted.setColorAt(0, QColor(240, 240, 240));
-    gradHighlighted.setColorAt(1, QColor(210, 210, 210));
-
-    gradClicked = QRadialGradient( upperLeftPt.x() - 3,
-                                   upperLeftPt.y() - 3,
-                                   (dist(upperLeftPt, bottomRightPt) / 4 ));
-    gradClicked.setColorAt(0, QColor(210, 210, 210));
-    gradClicked.setColorAt(1, QColor(240, 240, 240));
-
-    shadow.setEnabled(true);
+    QPointF snapped = snapPoint(pt);
+    //shadow.setEnabled(true);
 
     if ( isRoot() )
     {
@@ -84,18 +67,37 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     }
     else if ( isCut() )
     {
+        qDebug() << "Adding cut";
         setFlag(ItemIsMovable);
         setFlag(ItemSendsGeometryChanges);
         setCacheMode(DeviceCoordinateCache);
         setAcceptHoverEvents(true);
 
-        QPointF snapped = snapPoint(pt);
-        upperLeftPt.setX(snapped.x());
-        upperLeftPt.setX(snapped.y());
+        width = height = EMPTY_CUT_SIZE;
+        drawBox = QRectF( QPointF(0, 0), QPointF(width, height) );
+        updateCollisionBox();
 
-        bottomRightPt.setX(snapped.x() + 4 * GRID_SPACING);
-        bottomRightPt.setY(snapped.y() + 4 * GRID_SPACING);
+        setPos(snapped);
     }
+
+    // Colors
+    gradDefault = QRadialGradient( snapped.x() - 3,
+                                   snapped.y() - 3,
+                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) / 4 ));
+    gradDefault.setColorAt(0, QColor(255, 255, 255));
+    gradDefault.setColorAt(1, QColor(185, 185, 185));
+
+    gradHighlighted = QRadialGradient( snapped.x() - 3,
+                                       snapped.y() - 3,
+                                       (dist(drawBox.topLeft(), drawBox.bottomRight()) / 4 ));
+    gradHighlighted.setColorAt(0, QColor(240, 240, 240));
+    gradHighlighted.setColorAt(1, QColor(210, 210, 210));
+
+    gradClicked = QRadialGradient( snapped.x() - 3,
+                                   snapped.y() - 3,
+                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) / 4 ));
+    gradClicked.setColorAt(0, QColor(210, 210, 210));
+    gradClicked.setColorAt(1, QColor(240, 240, 240));
 }
 
 /*
@@ -147,12 +149,7 @@ void Node::removeHighlight()
  */
 QRectF Node::boundingRect() const
 {
-    QPointF ul(upperLeftPt.x() - STROKE_ADJ,
-               upperLeftPt.y() - STROKE_ADJ);
-    QPointF br(upperLeftPt.x() - STROKE_ADJ,
-               upperLeftPt.y() - STROKE_ADJ);
-
-    return QRectF(ul, br);
+    return drawBox;
 }
 
 /*
@@ -171,16 +168,29 @@ QRectF Node::boundingRect() const
 QPainterPath Node::shape() const
 {
     QPainterPath path;
-    path.addRect(collisionBounds);
+    path.addRect(collisionBox);
     return path;
 }
 
 /*
- * Returns a copy of the collisionBounds rectangle
+ * Returns the collisionBox mapped to scene
  */
 QRectF Node::getCollisionRect() const
 {
-    return QRectF(collisionBounds);
+    return QRectF(mapToScene(collisionBox.topLeft()),
+                  mapToScene(collisionBox.bottomRight()));
+}
+
+/*
+ * sets the collisionBox based off a change in the drawBox
+ * collision box is in local coords
+ */
+void Node::updateCollisionBox()
+{
+    collisionBox = QRectF(QPointF(drawBox.topLeft().x() - COLLISION_OFFSET,
+                                  drawBox.topLeft().y() - COLLISION_OFFSET),
+                          QPointF(drawBox.bottomRight().x() + COLLISION_OFFSET,
+                                  drawBox.bottomRight().y() + COLLISION_OFFSET));
 }
 
 /*
@@ -198,7 +208,10 @@ void Node::paint(QPainter* painter,
     QRectF rect;
 
     if ( isCut() )
-        rect = QRectF(boundingRect().topLeft(), boundingRect().bottomRight());
+    {
+        rect = QRectF(drawBox.topLeft(), drawBox.bottomRight());
+        printRect("paint rect", rect);
+    }
 
     if (mouseDown)
         painter->setBrush(QBrush(gradClicked));
@@ -225,17 +238,38 @@ QVariant Node::itemChange(GraphicsItemChange change,
 {
     if ( change == ItemPositionChange && scene() )
     {
+        qDebug() << "ItemPositionChange";
         QPointF snapped = snapPoint(value.toPointF());
+        printPt("snapped", snapped);
         qreal delX = snapped.x() - pos().x();
         qreal delY = snapped.y() - pos().y();
 
         if ( delX == 0 && delY == 0 )
             return snapped;
 
+        printPt("delta", QPointF(delX, delY));
+
+        QRectF potentialRect = getCollisionRect();
+        printRect("pr-pre:",potentialRect);
+        potentialRect.translate(delX, delY);
+        printRect("pr-post:",potentialRect);
+
         // check for collision
+        for (Node* sibling : parent->children)
+        {
+            if (sibling == this)
+                continue;
+
+            if (rectsCollide(sibling->getCollisionRect(), potentialRect ))
+            {
+                qDebug() << "collision!";
+                return pos();
+            }
+        }
         return snapped;
     }
 
+    return QGraphicsItem::itemChange(change, value);
 }
 
 /////////////
@@ -368,7 +402,19 @@ QPointF closest(const QList<QPointF> &list, const QPointF &target)
  */
 bool rectsCollide(const QRectF &a, const QRectF &b)
 {
+    printRect("checking collision for a", a);
+    printRect("against b", b);
 
+    qreal ax1, ax2, ay1, ay2;
+    a.getCoords(&ax1, &ay1, &ax2, &ay2);
+
+    qreal bx1, bx2, by1, by2;
+    b.getCoords(&bx1, &by1, &bx2, &by2);
+
+    return ( ax1 < bx2 &&
+             ax2 > bx1 &&
+             ay1 < by2 &&
+             ay2 > by1 );
 }
 
 /*
@@ -376,7 +422,10 @@ bool rectsCollide(const QRectF &a, const QRectF &b)
  */
 void printPt(const QString &s, const QPointF &pt)
 {
-
+    qDebug() << s
+             << pt.x()
+             << ","
+             << pt.y();
 }
 
 
@@ -385,7 +434,14 @@ void printPt(const QString &s, const QPointF &pt)
  */
 void printRect(const QString &s, const QRectF &r)
 {
-
+    qDebug() << s
+             << r.topLeft().x()
+             << ","
+             << r.topLeft().y()
+             << ":"
+             << r.bottomRight().x()
+             << ","
+             << r.bottomRight().y();
 }
 
 

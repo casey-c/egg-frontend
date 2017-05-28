@@ -58,8 +58,8 @@ private:
 
     // Visual details
     NodeType type;
-    QPointF upperLeftPt, bottomRightPt;
-    qreal translateOffsetX, translateOffsetY;
+    //QPointF upperLeftPt, bottomRightPt;
+    //qreal translateOffsetX, translateOffsetY;
     QString text;
 
     bool highlighted;
@@ -77,12 +77,25 @@ private:
 
     // Children
     QList<Node*> children;
-    qreal minX, minY, maxX, maxY;
+    //qreal minX, minY, maxX, maxY;
 
     // Collision
-    QRectF collisionBounds;
-    QRectF potentialBounds;
-    QuantumBool hasPotentialBounds;
+    //QRectF collisionBounds;
+    //QRectF potentialBounds;
+    //QuantumBool hasPotentialBounds;
+
+    // New Important Points & Rects
+    qreal width, height; // in absolute pixels (a multiple of GRID_SPACING)
+
+    QPointF deltaPosShift; // a pixel amount to shift the main pos() by
+    QPointF potentialPosShift; // for checking collision mid-movement
+
+    QuantumBool hasDifferentPotentialBounds; // mid movement
+
+    QRectF drawBox; // top left is pos().x() - deltaPosShift.x(), etc.
+    QRectF collisionBox; // drawBox, but grown in all directions by GRID_SPACING / 2 + 1
+
+    //QRectF potentialCollisionBox;
 
     ///////////////
     /// Methods ///
@@ -95,6 +108,7 @@ private:
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
     QRectF getCollisionRect() const;
+    void updateCollisionBox(); //set the collisionBox
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,

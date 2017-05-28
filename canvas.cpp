@@ -1,6 +1,7 @@
 #include "canvas.h"
 #include "node.h"
 #include <QKeyEvent>
+#include <QDebug>
 
 Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent)
@@ -27,7 +28,7 @@ void Canvas::drawBackground(QPainter* painter, const QRectF &rect)
     QLinearGradient gradient(sceneRect.topLeft(),
                              sceneRect.bottomRight());
     gradient.setColorAt(0, Qt::white);
-    gradient.setColorAt(1, QColor(Qt::lightGray));
+    gradient.setColorAt(1, QColor(Qt::lightGray).lighter(150));
 
     painter->fillRect(rect.intersected(sceneRect),
                       gradient);
@@ -64,6 +65,9 @@ void Canvas::addCut()
 {
     Node* n = highlighted->addChildCut(lastMousePos);
     if ( n->getParent() == root )
+    {
         scene->addItem(n);
+        qDebug() << "adding to scene ";
+    }
     setHighlight(n);
 }

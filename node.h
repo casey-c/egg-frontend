@@ -69,7 +69,7 @@ private:
     QRadialGradient gradHighlighted;
     QRadialGradient gradClicked;
 
-    QGraphicsDropShadowEffect shadow;
+    QGraphicsDropShadowEffect* shadow;
 
     // Important points
     QPointF lastHoverPos;

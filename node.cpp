@@ -56,10 +56,12 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     potentialPosShift(0, 0),
     hasDifferentPotentialBounds(false)
 {
-
-
-    QPointF snapped = snapPoint(pt);
-    //shadow.setEnabled(true);
+    // Drop shadow on click and drag
+    shadow = new QGraphicsDropShadowEffect(this);
+    shadow->setEnabled(false);
+    shadow->setBlurRadius(2);
+    shadow->setOffset(2);
+    this->setGraphicsEffect(shadow);
 
     if ( isRoot() )
     {
@@ -77,25 +79,25 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
         drawBox = QRectF( QPointF(0, 0), QPointF(width, height) );
         updateCollisionBox();
 
-        setPos(snapped);
+        setPos(snapPoint(pt));
     }
 
     // Colors
-    gradDefault = QRadialGradient( snapped.x() - 3,
-                                   snapped.y() - 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) / 4 ));
-    gradDefault.setColorAt(0, QColor(255, 255, 255));
+    gradDefault = QRadialGradient( drawBox.x() + 3,
+                                   drawBox.y() + 3,
+                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    gradDefault.setColorAt(0, QColor(225, 225, 225));
     gradDefault.setColorAt(1, QColor(185, 185, 185));
 
-    gradHighlighted = QRadialGradient( snapped.x() - 3,
-                                       snapped.y() - 3,
-                                       (dist(drawBox.topLeft(), drawBox.bottomRight()) / 4 ));
+    gradHighlighted = QRadialGradient( drawBox.x() + 3,
+                                       drawBox.y() + 3,
+                                       (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
     gradHighlighted.setColorAt(0, QColor(240, 240, 240));
     gradHighlighted.setColorAt(1, QColor(210, 210, 210));
 
-    gradClicked = QRadialGradient( snapped.x() - 3,
-                                   snapped.y() - 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) / 4 ));
+    gradClicked = QRadialGradient( drawBox.x() + 3,
+                                   drawBox.y() + 3,
+                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
     gradClicked.setColorAt(0, QColor(210, 210, 210));
     gradClicked.setColorAt(1, QColor(240, 240, 240));
 }
@@ -301,7 +303,7 @@ void Node::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     mouseOffset = event->pos();
-    shadow.setEnabled(true);
+    shadow->setEnabled(true);
     mouseDown = true;
     update();
 
@@ -314,7 +316,7 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     mouseDown = false;
-    shadow.setEnabled(false);
+    shadow->setEnabled(false);
     update();
 
     QGraphicsObject::mouseReleaseEvent(event);

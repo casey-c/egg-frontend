@@ -18,7 +18,6 @@
 // Forward declarations for helper functions (implementation located at end)
 QPointF snapPoint(const QPointF &pt);
 qreal dist(const QPointF &a, const QPointF &b);
-QPointF closest(const QList<QPointF> &list, const QPointF &target);
 bool rectsCollide(const QRectF &a, const QRectF &b);
 void printPt(const QString &s, const QPointF &pt);
 void printRect(const QString &s, const QRectF &r);
@@ -181,6 +180,8 @@ QRectF Node::getCollisionRect() const
 {
     return QRectF(mapToScene(collisionBox.topLeft()),
                   mapToScene(collisionBox.bottomRight()));
+    //return QRectF(mapToParent(collisionBox.topLeft()),
+                  //mapToParent(collisionBox.bottomRight()));
 }
 
 /*
@@ -239,39 +240,94 @@ QVariant Node::itemChange(GraphicsItemChange change,
                           const QVariant &value)
 {
     if ( change == ItemPositionChange && scene() )
-    {
-        qDebug() << "ItemPositionChange";
-        QPointF snapped = snapPoint(value.toPointF());
-        printPt("snapped", snapped);
-        qreal delX = snapped.x() - pos().x();
-        qreal delY = snapped.y() - pos().y();
-
-        if ( delX == 0 && delY == 0 )
-            return snapped;
-
-        printPt("delta", QPointF(delX, delY));
-
-        QRectF potentialRect = getCollisionRect();
-        printRect("pr-pre:",potentialRect);
-        potentialRect.translate(delX, delY);
-        printRect("pr-post:",potentialRect);
-
-        // check for collision
-        for (Node* sibling : parent->children)
-        {
-            if (sibling == this)
-                continue;
-
-            if (rectsCollide(sibling->getCollisionRect(), potentialRect ))
-            {
-                qDebug() << "collision!";
-                return pos();
-            }
-        }
-        return snapped;
-    }
+        return collisionLessPoint(value.toPointF());
 
     return QGraphicsItem::itemChange(change, value);
+}
+
+/*
+ * Returns a grid-aligned point close to val such that if the Node were to move
+ * there, no collision would occur. In other words, take the point val and try
+ * and find a snapped point that wouldn't cause a collision.
+ *
+ * This function uses a "bloom" technique that searches an extra four snapped
+ * points in the cardinal directions away from the snapped node. This allows for
+ * fuzzier detection of where the user wanted to move, making it less
+ * frustrating to move a node near other potentially colliding nodes.
+ *
+ * If no point is found, pos() is returned, as it will result in no movement
+ * whatsoever.
+ */
+QPointF Node::collisionLessPoint(QPointF val) const
+{
+    // Put val onto the snapping grid
+    QPointF snapped = snapPoint(val);
+
+    // No movement, so no need to check updated collision
+    if ( snapped.x() - pos().x() == 0 &&
+         snapped.y() - pos().y() == 0 )
+        return pos();
+
+    // Build up a "bloom" of potential points to check
+    QList<QPointF> potentialPts;
+    potentialPts.append(QPointF(snapped.x() - GRID_SPACING, snapped.y()));
+    potentialPts.append(QPointF(snapped.x(), snapped.y() - GRID_SPACING));
+    potentialPts.append(QPointF(snapped.x() + GRID_SPACING, snapped.y()));
+    potentialPts.append(QPointF(snapped.x(), snapped.y() + GRID_SPACING));
+
+    // Sort by distance, so we search for the closest first
+    std::sort(potentialPts.begin(), potentialPts.end(),
+          [this](const QPointF a, const QPointF b) ->
+          bool { return dist(a, this->pos()) < dist(b, this->pos()); });
+
+    // Always check the target before any bloomed points
+    potentialPts.prepend(snapped);
+
+    // Check all these points to see if they would cause a collision
+    for ( QPointF pt : potentialPts )
+    {
+        QRectF rect = getTranslatedSceneCollisionRect( pt.x() - pos().x(),
+                                                       pt.y() - pos().y());
+        if ( rectAvoidsCollision(rect) )
+        {
+            // TODO: percolate up and check parents too
+            return pt;
+        }
+    }
+
+    // None of those points avoided collision
+    return pos();
+}
+
+/*
+ * Check if a given potential collision box rect would collide with any direct
+ * siblings.
+ */
+bool Node::rectAvoidsCollision(QRectF rect) const
+{
+    if ( isRoot() )
+        return true;
+
+    for (Node* sibling : parent->children)
+    {
+        if (sibling == this)
+            continue;
+
+        if (rectsCollide(rect, sibling->getCollisionRect()))
+            return false;
+    }
+
+    return true;
+}
+
+/*
+ * returns the collision rect in scene coords, offset by the given deltas
+ */
+QRectF Node::getTranslatedSceneCollisionRect(qreal deltaX, qreal deltaY) const
+{
+    QRectF rect = getCollisionRect(); // already in scene coords
+    rect.translate(deltaX, deltaY);
+    return rect;
 }
 
 /////////////
@@ -387,15 +443,6 @@ qreal dist(const QPointF &a, const QPointF &b)
 {
     return qSqrt( qPow( ( a.x() - b.x() ), 2) +
                   qPow( ( a.y() - b.y() ), 2) );
-}
-
-/*
- * Returns the point in the list closest to the target point. If the list is
- * empty, this function just returns the target point.
- */
-QPointF closest(const QList<QPointF> &list, const QPointF &target)
-{
-
 }
 
 /*

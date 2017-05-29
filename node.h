@@ -118,6 +118,10 @@ private:
     QVariant itemChange(GraphicsItemChange change,
                         const QVariant &value) override;
 
+    QPointF collisionLessPoint(QPointF val) const;
+    bool rectAvoidsCollision(QRectF rect) const;
+    QRectF getTranslatedSceneCollisionRect(qreal delX, qreal delY) const;
+
     // Mouse
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;

@@ -181,6 +181,17 @@ void Node::calculateChildBox()
             maxY = childBR.y();
     }
 
+#if 1 // kind of an interesting placeholder technique
+    if (minX > 0)
+        minX = 0;
+    if (minY > 0)
+        minY = 0;
+    if (maxX < EMPTY_CUT_SIZE)
+        maxX = EMPTY_CUT_SIZE;
+    if (maxY < EMPTY_CUT_SIZE)
+        maxY = EMPTY_CUT_SIZE;
+#endif
+
     childBox = QRectF(QPointF(minX, minY),
                       QPointF(maxX, maxY));
     printRect("childBox", childBox);

@@ -418,8 +418,11 @@ QPointF Node::collisionLessPoint(QPointF val)
     // Check all these points to see if they would cause a collision
     for ( QPointF pt : potentialPts )
     {
-        QRectF rect = getPotentialSceneCollision(pt.x() - pos().x(),
-                                                 pt.y() - pos().y());
+        QRectF rect = getSceneCollisionBox(pt.x() - pos().x(),
+                                           pt.y() - pos().y());
+
+        //QRectF rect = getPotentialSceneCollision(pt.x() - pos().x(),
+                                                 //pt.y() - pos().y());
         if ( rectAvoidsCollision(rect) )
         {
             // Found an okay place to move to
@@ -512,21 +515,21 @@ QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
                                       //mp.y() + h + COLLISION_OFFSET)));
 }
 
-QRectF Node::getPotentialSceneCollision(qreal dx, qreal dy) const
-{
-    return rectToScene(getDrawAsCollision(getTranslatedDrawBox(dx, dy)));
+//QRectF Node::getPotentialSceneCollision(qreal dx, qreal dy) const
+//{
+    //return rectToScene(getDrawAsCollision(getTranslatedDrawBox(dx, dy)));
 
-}
+//}
 
 /*
  * Returns a potential draw box if it were translated by the given deltas
  */
-QRectF Node::getTranslatedDrawBox(qreal deltaX, qreal deltaY) const
-{
-    QRectF rect(drawBox.topLeft(), drawBox.bottomRight());
-    rect.translate(deltaX, deltaY);
-    return rect;
-}
+//QRectF Node::getTranslatedDrawBox(qreal deltaX, qreal deltaY) const
+//{
+    //QRectF rect(drawBox.topLeft(), drawBox.bottomRight());
+    //rect.translate(deltaX, deltaY);
+    //return rect;
+//}
 
 /*
  * Converts the drawable rectangle given in params into an actual collisionBox
@@ -544,11 +547,11 @@ QRectF Node::getDrawAsCollision(const QRectF &draw) const
  * Qt function (mapToScene) that takes in a rectangle spits out a polygon. We
  * want to keep it as a rectangle instead.
  */
-QRectF Node::rectToScene(const QRectF &rect) const
-{
-    return QRectF(mapToScene(rect.topLeft()),
-                  mapToScene(rect.bottomRight()));
-}
+//QRectF Node::rectToScene(const QRectF &rect) const
+//{
+    //return QRectF(mapToScene(rect.topLeft()),
+                  //mapToScene(rect.bottomRight()));
+//}
 
 /////////////
 /// Mouse ///

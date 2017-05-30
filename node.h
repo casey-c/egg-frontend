@@ -126,9 +126,9 @@ private:
 
     QRectF getPotentialSceneCollision(qreal deltaX, qreal deltaY) const;
 
-    QRectF getTranslatedDrawBox(qreal deltaX, qreal deltaY) const;
+    //QRectF getTranslatedDrawBox(qreal deltaX, qreal deltaY) const;
     QRectF getDrawAsCollision(const QRectF &draw) const;
-    QRectF rectToScene(const QRectF &rect) const;
+    //QRectF rectToScene(const QRectF &rect) const;
 
     //QRectF convertTempCollisionToDrawBox();
 

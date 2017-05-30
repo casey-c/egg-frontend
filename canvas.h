@@ -12,6 +12,8 @@ public:
     ~Canvas() {}
 
     void setHighlight(Node* node);
+    void drawBoundingBox(QRectF rect);
+    void drawSecondBox(QRectF rect);
 
 private:
     //////////////
@@ -47,7 +49,7 @@ private:
 
     // Debug
     QGraphicsRectItem* debugBox;
-    void drawBoundingBox(QRectF rect);
+    QGraphicsRectItem* debugBox2;
 };
 
 #endif // CANVAS_H

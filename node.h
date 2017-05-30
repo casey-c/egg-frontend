@@ -102,8 +102,9 @@ private:
     // Graphics
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
-    QRectF getCollisionRect() const;
+    //QRectF getCollisionRect() const;
     void updateCollisionBox(); //set the collisionBox
+
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
@@ -115,12 +116,18 @@ private:
 
     QPointF collisionLessPoint(QPointF val);
     bool rectAvoidsCollision(QRectF rect) const;
-    QRectF getTranslatedSceneCollisionRect(qreal delX, qreal delY) const;
 
-    void calculateChildBox();
-    void resizeToFitChildBox();
+    QRectF getSceneCollisionBox() const;
+    //QRectF getTranslatedSceneCollisionRect(qreal delX, qreal delY) const;
 
-    QRectF convertTempCollisionToDrawBox();
+    //void calculateChildBox();
+    //void resizeToFitChildBox();
+
+    QRectF getTranslatedDrawBox(qreal deltaX, qreal deltaY) const;
+    QRectF getDrawAsCollision(const QRectF &draw) const;
+    QRectF rectToScene(const QRectF &rect) const;
+
+    //QRectF convertTempCollisionToDrawBox();
 
     // Mouse
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;

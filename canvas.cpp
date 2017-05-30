@@ -5,7 +5,8 @@
 
 Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent),
-    debugBox(nullptr)
+    debugBox(nullptr),
+    debugBox2(nullptr)
 {
     scene = new QGraphicsScene(this);
     scene->setItemIndexMethod(QGraphicsScene::NoIndex);
@@ -84,4 +85,12 @@ void Canvas::drawBoundingBox(QRectF rect)
         scene->removeItem(debugBox);
 
     debugBox = scene->addRect(rect);
+}
+
+void Canvas::drawSecondBox(QRectF rect)
+{
+    if (debugBox2 != nullptr)
+        scene->removeItem(debugBox2);
+
+    debugBox2 = scene->addRect(rect, QPen(QColor(255, 0, 0)), QBrush());
 }

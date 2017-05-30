@@ -73,9 +73,8 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
 
         width = height = EMPTY_CUT_SIZE;
         drawBox = QRectF( QPointF(0, 0), QPointF(width, height) );
-        updateCollisionBox();
-
         setPos(snapPoint(pt));
+        updateCollisionBox();
     }
 
     // Colors
@@ -107,30 +106,33 @@ Node* Node::addChildCut(QPointF pt)
     children.append(newChild);
     newChild->setParentItem(this);
 
+    canvas->drawBoundingBox(rectToScene(newChild->collisionBox));
+
     if ( !isRoot() )
     {
         // Update min, max
-        calculateChildBox();
-        resizeToFitChildBox();
+        //calculateChildBox();
+        //resizeToFitChildBox();
     }
 
     return newChild;
 }
 
 // Assumes the quantum bool is set
-QRectF Node::convertTempCollisionToDrawBox()
-{
-    QPointF tl = potentialBounds.topLeft();
-    QPointF br = potentialBounds.bottomRight();
+//QRectF Node::convertTempCollisionToDrawBox()
+//{
+    //QPointF tl = potentialBounds.topLeft();
+    //QPointF br = potentialBounds.bottomRight();
+//
+    //tl.setX(tl.x() + COLLISION_OFFSET);
+    //tl.setY(tl.y() + COLLISION_OFFSET);
+    //br.setX(br.x() - COLLISION_OFFSET);
+    //br.setY(br.y() - COLLISION_OFFSET);
 
-    tl.setX(tl.x() + COLLISION_OFFSET);
-    tl.setY(tl.y() + COLLISION_OFFSET);
-    br.setX(br.x() - COLLISION_OFFSET);
-    br.setY(br.y() - COLLISION_OFFSET);
+    //return QRectF(tl, br);
+//}
 
-    return QRectF(tl, br);
-}
-
+#if 0
 void Node::calculateChildBox()
 {
     if (children.empty())
@@ -196,9 +198,11 @@ void Node::calculateChildBox()
                       QPointF(maxX, maxY));
     printRect("childBox", childBox);
 }
+#endif
 
 // Assumes calculateChildBox() was called and updated
 // successfully
+#if 0
 void Node::resizeToFitChildBox()
 {
     QPointF tl = childBox.topLeft();
@@ -216,6 +220,7 @@ void Node::resizeToFitChildBox()
     updateCollisionBox();
     update();
 }
+#endif
 
 QRectF Node::getChildBoxInScene() const
 {
@@ -289,11 +294,11 @@ QPainterPath Node::shape() const
 /*
  * Returns the collisionBox mapped to scene
  */
-QRectF Node::getCollisionRect() const
-{
-    return QRectF(mapToScene(collisionBox.topLeft()),
-                  mapToScene(collisionBox.bottomRight()));
-}
+//QRectF Node::getCollisionRect() const
+//{
+    //return QRectF(mapToScene(collisionBox.topLeft()),
+                  //mapToScene(collisionBox.bottomRight()));
+//}
 
 /*
  * sets the collisionBox based off a change in the drawBox
@@ -303,10 +308,11 @@ QRectF Node::getCollisionRect() const
  */
 void Node::updateCollisionBox()
 {
-    collisionBox = QRectF(QPointF(drawBox.topLeft().x() - COLLISION_OFFSET,
-                                  drawBox.topLeft().y() - COLLISION_OFFSET),
-                          QPointF(drawBox.bottomRight().x() + COLLISION_OFFSET,
-                                  drawBox.bottomRight().y() + COLLISION_OFFSET));
+    collisionBox = getDrawAsCollision(drawBox);
+    //collisionBox = QRectF(QPointF(drawBox.topLeft().x() - COLLISION_OFFSET,
+                                  //drawBox.topLeft().y() - COLLISION_OFFSET),
+                          //QPointF(drawBox.bottomRight().x() + COLLISION_OFFSET,
+                                  //drawBox.bottomRight().y() + COLLISION_OFFSET));
 }
 
 /*
@@ -354,6 +360,11 @@ QVariant Node::itemChange(GraphicsItemChange change,
 {
     if ( change == ItemPositionChange && scene() )
         return collisionLessPoint(value.toPointF());
+    if ( change == ItemPositionHasChanged && scene() )
+    {
+        updateCollisionBox();
+        canvas->drawBoundingBox(rectToScene(collisionBox));
+    }
 
     return QGraphicsItem::itemChange(change, value);
 }
@@ -399,8 +410,16 @@ QPointF Node::collisionLessPoint(QPointF val)
     // Check all these points to see if they would cause a collision
     for ( QPointF pt : potentialPts )
     {
-        QRectF rect = getTranslatedSceneCollisionRect( pt.x() - pos().x(),
-                                                       pt.y() - pos().y());
+        QRectF tr = getTranslatedDrawBox(pt.x() - pos().x(),
+                                         pt.y() - pos().y());
+
+        if ( rectAvoidsCollision(rectToScene(getDrawAsCollision(tr))) )
+        {
+            // Found an okay place to move to
+            return pt;
+        }
+
+        /*
         if ( rectAvoidsCollision(rect) )
         {
             // TODO: percolate up and check parents too
@@ -411,6 +430,7 @@ QPointF Node::collisionLessPoint(QPointF val)
             parent->resizeToFitChildBox();
             return pt;
         }
+        */
     }
 
     // None of those points avoided collision
@@ -426,13 +446,33 @@ bool Node::rectAvoidsCollision(QRectF rect) const
     if ( isRoot() )
         return true;
 
+    qDebug() << "trying to see if my (" << myID << ") is colliding";
     for (Node* sibling : parent->children)
     {
         if (sibling == this)
             continue;
 
-        if (rectsCollide(rect, sibling->getCollisionRect()))
+        qDebug() << "Looking at sibling" << sibling->myID;
+
+        QRectF sibBox = sibling->getSceneCollisionBox();
+        //QRectF sibBox = rectToScene(getDrawAsCollision(sibling->drawBox));
+
+        canvas->drawBoundingBox(rect);
+        canvas->drawSecondBox(sibBox);
+
+        if (rectsCollide(rect, sibBox) )
+        {
+            qDebug() << "---";
+            qDebug() << "Collision";
+            qDebug() << "---";
             return false;
+        }
+        else
+        {
+            qDebug() << "---";
+            qDebug() << "No collision!";
+            qDebug() << "---";
+        }
     }
 
     return true;
@@ -441,11 +481,57 @@ bool Node::rectAvoidsCollision(QRectF rect) const
 /*
  * returns the collision rect in scene coords, offset by the given deltas
  */
-QRectF Node::getTranslatedSceneCollisionRect(qreal deltaX, qreal deltaY) const
+//QRectF Node::getTranslatedSceneCollisionRect(qreal deltaX, qreal deltaY) const
+//{
+    //QRectF rect(mapToScene(drawBox.topLeft()), mapToScene(drawBox.bottomRight()));
+    //QRectF rect = getCollisionRect(); // already in scene coords
+    //rect.translate(deltaX, deltaY);
+    //return rect;
+//}
+
+QRectF Node::getSceneCollisionBox() const
 {
-    QRectF rect = getCollisionRect(); // already in scene coords
+    int w = drawBox.width();
+    int h = drawBox.height();
+
+    QPointF mp = mapToScene(pos());
+
+    return QRectF( mapToScene(QPointF(mp.x() - COLLISION_OFFSET,
+                                      mp.y() - COLLISION_OFFSET)),
+                   mapToScene(QPointF(mp.x() + w + COLLISION_OFFSET,
+                                      mp.y() + h + COLLISION_OFFSET)));
+}
+
+/*
+ * Returns a potential draw box if it were translated by the given deltas
+ */
+QRectF Node::getTranslatedDrawBox(qreal deltaX, qreal deltaY) const
+{
+    QRectF rect(drawBox.topLeft(), drawBox.bottomRight());
     rect.translate(deltaX, deltaY);
     return rect;
+}
+
+/*
+ * Converts the drawable rectangle given in params into an actual collisionBox
+ */
+QRectF Node::getDrawAsCollision(const QRectF &draw) const
+{
+    return QRectF(QPointF(draw.topLeft().x() - COLLISION_OFFSET,
+                          draw.topLeft().y() - COLLISION_OFFSET),
+                  QPointF(draw.bottomRight().x() + COLLISION_OFFSET,
+                          draw.bottomRight().y() + COLLISION_OFFSET));
+}
+
+/*
+ * Helper to convert a rectangle to scene coords; this is because the built in
+ * Qt function (mapToScene) that takes in a rectangle spits out a polygon. We
+ * want to keep it as a rectangle instead.
+ */
+QRectF Node::rectToScene(const QRectF &rect) const
+{
+    return QRectF(mapToScene(rect.topLeft()),
+                  mapToScene(rect.bottomRight()));
 }
 
 /////////////

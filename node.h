@@ -44,7 +44,7 @@ public:
     Node* getLeftSibling();
     Node* getChild();
 
-    QRectF getChildBoxInScene() const;
+    //QRectF getChildBoxInScene() const;
 
 private:
 
@@ -79,18 +79,18 @@ private:
 
     // Children
     QList<Node*> children;
-    qreal minX, minY, maxX, maxY;
-    QRectF childBox;
+    //qreal minX, minY, maxX, maxY;
+    //QRectF childBox;
 
     // New Important Points & Rects
     qreal width, height; // in absolute pixels (a multiple of GRID_SPACING)
 
-    QuantumBool hasDifferentPotentialBounds; // mid movement
+    //QuantumBool hasDifferentPotentialBounds; // mid movement
 
     QRectF drawBox; // size of everything that gets drawn by this node
-    QRectF collisionBox; // drawBox, but grown in all directions by GRID_SPACING / 2 + 1
+    //QRectF collisionBox; // drawBox, but grown in all directions by GRID_SPACING / 2 + 1
 
-    QRectF potentialBounds;
+    //QRectF potentialBounds;
 
     ///////////////
     /// Methods ///
@@ -103,7 +103,7 @@ private:
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
     //QRectF getCollisionRect() const;
-    void updateCollisionBox(); //set the collisionBox
+    //void updateCollisionBox(); //set the collisionBox
 
 
     void paint(QPainter* painter,
@@ -117,11 +117,14 @@ private:
     QPointF collisionLessPoint(QPointF val);
     bool rectAvoidsCollision(QRectF rect) const;
 
-    QRectF getSceneCollisionBox() const;
+    QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
+    //QRectF getSceneCollisionBox() const;
     //QRectF getTranslatedSceneCollisionRect(qreal delX, qreal delY) const;
 
     //void calculateChildBox();
     //void resizeToFitChildBox();
+
+    QRectF getPotentialSceneCollision(qreal deltaX, qreal deltaY) const;
 
     QRectF getTranslatedDrawBox(qreal deltaX, qreal deltaY) const;
     QRectF getDrawAsCollision(const QRectF &draw) const;

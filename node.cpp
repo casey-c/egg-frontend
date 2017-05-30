@@ -74,7 +74,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
         width = height = EMPTY_CUT_SIZE;
         drawBox = QRectF( QPointF(0, 0), QPointF(width, height) );
         setPos(snapPoint(pt));
-        updateCollisionBox();
+        //updateCollisionBox();
     }
 
     // Colors
@@ -222,13 +222,13 @@ void Node::resizeToFitChildBox()
 }
 #endif
 
-QRectF Node::getChildBoxInScene() const
-{
-    QPointF tl = mapToScene(childBox.topLeft());
-    QPointF br = mapToScene(childBox.bottomRight());
+//QRectF Node::getChildBoxInScene() const
+//{
+    //QPointF tl = mapToScene(childBox.topLeft());
+    //QPointF br = mapToScene(childBox.bottomRight());
 
-    return QRectF(tl, br);
-}
+    //return QRectF(tl, br);
+//}
 
 /////////////////
 /// Highlight ///
@@ -287,7 +287,15 @@ QRectF Node::boundingRect() const
 QPainterPath Node::shape() const
 {
     QPainterPath path;
-    path.addRect(collisionBox);
+
+    path.addRect( getDrawAsCollision(drawBox) );
+
+    //QRectF sceneColl = getSceneCollisionBox();
+    //QPointF tl = mapFromScene(sceneColl.topLeft());
+    //QPointF br = mapFromScene(sceneColl.bottomRight());
+    //path.addRect(QRectF(tl, br));
+
+    //path.addRect(collisionBox);
     return path;
 }
 
@@ -306,14 +314,14 @@ QPainterPath Node::shape() const
  *
  * NOTE: call this function every time you adjust the drawBox!
  */
-void Node::updateCollisionBox()
-{
-    collisionBox = getDrawAsCollision(drawBox);
+//void Node::updateCollisionBox()
+//{
+    //collisionBox = getDrawAsCollision(drawBox);
     //collisionBox = QRectF(QPointF(drawBox.topLeft().x() - COLLISION_OFFSET,
                                   //drawBox.topLeft().y() - COLLISION_OFFSET),
                           //QPointF(drawBox.bottomRight().x() + COLLISION_OFFSET,
                                   //drawBox.bottomRight().y() + COLLISION_OFFSET));
-}
+//}
 
 /*
  * Override QGraphicsObject::paint
@@ -362,8 +370,8 @@ QVariant Node::itemChange(GraphicsItemChange change,
         return collisionLessPoint(value.toPointF());
     if ( change == ItemPositionHasChanged && scene() )
     {
-        updateCollisionBox();
-        canvas->drawBoundingBox(rectToScene(collisionBox));
+        //updateCollisionBox();
+        canvas->drawBoundingBox(getSceneCollisionBox());
     }
 
     return QGraphicsItem::itemChange(change, value);
@@ -410,10 +418,9 @@ QPointF Node::collisionLessPoint(QPointF val)
     // Check all these points to see if they would cause a collision
     for ( QPointF pt : potentialPts )
     {
-        QRectF tr = getTranslatedDrawBox(pt.x() - pos().x(),
-                                         pt.y() - pos().y());
-
-        if ( rectAvoidsCollision(rectToScene(getDrawAsCollision(tr))) )
+        QRectF rect = getPotentialSceneCollision(pt.x() - pos().x(),
+                                                 pt.y() - pos().y());
+        if ( rectAvoidsCollision(rect) )
         {
             // Found an okay place to move to
             return pt;
@@ -489,20 +496,26 @@ bool Node::rectAvoidsCollision(QRectF rect) const
     //return rect;
 //}
 
-QRectF Node::getSceneCollisionBox() const
+QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
 {
     int w = drawBox.width();
     int h = drawBox.height();
 
-    return QRectF( QPointF(pos().x() - COLLISION_OFFSET,
-                           pos().y() - COLLISION_OFFSET),
-                   QPointF(pos().x() + w + COLLISION_OFFSET,
-                           pos().y() + h + COLLISION_OFFSET));
+    return QRectF( QPointF(scenePos().x() - COLLISION_OFFSET + deltaX,
+                           scenePos().y() - COLLISION_OFFSET + deltaY),
+                   QPointF(scenePos().x() + w + COLLISION_OFFSET + deltaX,
+                           scenePos().y() + h + COLLISION_OFFSET + deltaY));
 
      //return QRectF( mapToScene(QPointF(mp.x() - COLLISION_OFFSET,
                                       //mp.y() - COLLISION_OFFSET)),
                    //mapToScene(QPointF(mp.x() + w + COLLISION_OFFSET,
                                       //mp.y() + h + COLLISION_OFFSET)));
+}
+
+QRectF Node::getPotentialSceneCollision(qreal dx, qreal dy) const
+{
+    return rectToScene(getDrawAsCollision(getTranslatedDrawBox(dx, dy)));
+
 }
 
 /*

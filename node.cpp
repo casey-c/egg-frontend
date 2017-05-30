@@ -50,10 +50,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     lastHoverPos(0, 0),
     mouseOffset(0, 0),
     width(0),
-    height(0),
-    deltaPosShift(0, 0),
-    potentialPosShift(0, 0),
-    hasDifferentPotentialBounds(false)
+    height(0)
 {
     // Drop shadow on click and drag
     shadow = new QGraphicsDropShadowEffect(this);
@@ -109,7 +106,104 @@ Node* Node::addChildCut(QPointF pt)
     Node* newChild = new Node(canvas, this, Cut, mapFromScene(pt));
     children.append(newChild);
     newChild->setParentItem(this);
+
+    if ( !isRoot() )
+    {
+        // Update min, max
+        calculateChildBox();
+        resizeToFitChildBox();
+    }
+
     return newChild;
+}
+
+// Assumes the quantum bool is set
+QRectF Node::convertTempCollisionToDrawBox()
+{
+    QPointF tl = potentialBounds.topLeft();
+    QPointF br = potentialBounds.bottomRight();
+
+    tl.setX(tl.x() + COLLISION_OFFSET);
+    tl.setY(tl.y() + COLLISION_OFFSET);
+    br.setX(br.x() - COLLISION_OFFSET);
+    br.setY(br.y() - COLLISION_OFFSET);
+
+    return QRectF(tl, br);
+}
+
+void Node::calculateChildBox()
+{
+    if (children.empty())
+        return;
+
+    Node* first = children.first();
+    QPointF firstTL, firstBR;
+    if (first->hasDifferentPotentialBounds.check())
+    {
+        QRectF rect = first->convertTempCollisionToDrawBox();
+        firstTL = first->mapToParent(rect.topLeft());
+        firstBR = first->mapToParent(rect.bottomRight());
+    }
+    else
+    {
+        firstTL = first->mapToParent(first->drawBox.topLeft());
+        firstBR = first->mapToParent(first->drawBox.bottomRight());
+    }
+
+    minX = firstTL.x();
+    minY = firstTL.y();
+    maxX = firstBR.x();
+    maxY = firstBR.y();
+
+    for (Node* child : children)
+    {
+        QPointF childTL, childBR;
+
+        if (child->hasDifferentPotentialBounds.check())
+        {
+            QRectF rect = child->convertTempCollisionToDrawBox();
+            childTL = child->mapToParent(rect.topLeft());
+            childBR = child->mapToParent(rect.bottomRight());
+        }
+        else
+        {
+            childTL = child->mapToParent(child->drawBox.topLeft());
+            childBR = child->mapToParent(child->drawBox.bottomRight());
+        }
+
+        if (childTL.x() < minX)
+            minX = childTL.x();
+        if (childTL.y() < minY)
+            minY = childTL.y();
+        if (childBR.x() > maxX)
+            maxX = childBR.x();
+        if (childBR.y() > maxY)
+            maxY = childBR.y();
+    }
+
+    childBox = QRectF(QPointF(minX, minY),
+                      QPointF(maxX, maxY));
+    printRect("childBox", childBox);
+}
+
+// Assumes calculateChildBox() was called and updated
+// successfully
+void Node::resizeToFitChildBox()
+{
+    QPointF tl = childBox.topLeft();
+    QPointF br = childBox.bottomRight();
+
+#if 1
+    tl.setX(tl.x() - GRID_SPACING);
+    tl.setY(tl.y() - GRID_SPACING);
+    br.setX(br.x() + GRID_SPACING);
+    br.setY(br.y() + GRID_SPACING);
+#endif
+
+    prepareGeometryChange();
+    drawBox = QRectF(tl, br);
+    updateCollisionBox();
+    update();
 }
 
 /////////////////
@@ -180,13 +274,13 @@ QRectF Node::getCollisionRect() const
 {
     return QRectF(mapToScene(collisionBox.topLeft()),
                   mapToScene(collisionBox.bottomRight()));
-    //return QRectF(mapToParent(collisionBox.topLeft()),
-                  //mapToParent(collisionBox.bottomRight()));
 }
 
 /*
  * sets the collisionBox based off a change in the drawBox
  * collision box is in local coords
+ *
+ * NOTE: call this function every time you adjust the drawBox!
  */
 void Node::updateCollisionBox()
 {
@@ -258,7 +352,7 @@ QVariant Node::itemChange(GraphicsItemChange change,
  * If no point is found, pos() is returned, as it will result in no movement
  * whatsoever.
  */
-QPointF Node::collisionLessPoint(QPointF val) const
+QPointF Node::collisionLessPoint(QPointF val)
 {
     // Put val onto the snapping grid
     QPointF snapped = snapPoint(val);
@@ -291,6 +385,11 @@ QPointF Node::collisionLessPoint(QPointF val) const
         if ( rectAvoidsCollision(rect) )
         {
             // TODO: percolate up and check parents too
+            potentialBounds = QRectF( mapFromScene(rect.topLeft()),
+                                      mapFromScene(rect.bottomRight()));
+            hasDifferentPotentialBounds.set();
+            parent->calculateChildBox();
+            parent->resizeToFitChildBox();
             return pt;
         }
     }

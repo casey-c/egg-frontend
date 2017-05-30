@@ -77,25 +77,18 @@ private:
 
     // Children
     QList<Node*> children;
-    //qreal minX, minY, maxX, maxY;
-
-    // Collision
-    //QRectF collisionBounds;
-    //QRectF potentialBounds;
-    //QuantumBool hasPotentialBounds;
+    qreal minX, minY, maxX, maxY;
+    QRectF childBox;
 
     // New Important Points & Rects
     qreal width, height; // in absolute pixels (a multiple of GRID_SPACING)
 
-    QPointF deltaPosShift; // a pixel amount to shift the main pos() by
-    QPointF potentialPosShift; // for checking collision mid-movement
-
     QuantumBool hasDifferentPotentialBounds; // mid movement
 
-    QRectF drawBox; // top left is pos().x() - deltaPosShift.x(), etc.
+    QRectF drawBox; // size of everything that gets drawn by this node
     QRectF collisionBox; // drawBox, but grown in all directions by GRID_SPACING / 2 + 1
 
-    //QRectF potentialCollisionBox;
+    QRectF potentialBounds;
 
     ///////////////
     /// Methods ///
@@ -118,9 +111,14 @@ private:
     QVariant itemChange(GraphicsItemChange change,
                         const QVariant &value) override;
 
-    QPointF collisionLessPoint(QPointF val) const;
+    QPointF collisionLessPoint(QPointF val);
     bool rectAvoidsCollision(QRectF rect) const;
     QRectF getTranslatedSceneCollisionRect(qreal delX, qreal delY) const;
+
+    void calculateChildBox();
+    void resizeToFitChildBox();
+
+    QRectF convertTempCollisionToDrawBox();
 
     // Mouse
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;

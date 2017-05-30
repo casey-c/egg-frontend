@@ -44,6 +44,10 @@ private:
     void highlightRight();
     void highlightLeft();
     void highlightParent();
+
+    // Debug
+    QGraphicsRectItem* debugBox;
+    void drawBoundingBox(QRectF rect);
 };
 
 #endif // CANVAS_H

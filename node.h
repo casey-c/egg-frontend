@@ -44,6 +44,8 @@ public:
     Node* getLeftSibling();
     Node* getChild();
 
+    QRectF getChildBoxInScene() const;
+
 private:
 
     //////////////

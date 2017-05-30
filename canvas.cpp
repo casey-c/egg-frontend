@@ -4,7 +4,8 @@
 #include <QDebug>
 
 Canvas::Canvas(QWidget* parent) :
-    QGraphicsView(parent)
+    QGraphicsView(parent),
+    debugBox(nullptr)
 {
     scene = new QGraphicsScene(this);
     scene->setItemIndexMethod(QGraphicsScene::NoIndex);
@@ -45,6 +46,10 @@ void Canvas::keyPressEvent(QKeyEvent* event)
     case Qt::Key_X:
         addCut();
         break;
+    case Qt::Key_B:
+        if (highlighted != nullptr && !highlighted->isRoot())
+            drawBoundingBox(highlighted->getChildBoxInScene());
+        break;
     }
 }
 
@@ -70,4 +75,13 @@ void Canvas::addCut()
         qDebug() << "adding to scene ";
     }
     setHighlight(n);
+}
+
+// rect is in scene coords
+void Canvas::drawBoundingBox(QRectF rect)
+{
+    if (debugBox != nullptr)
+        scene->removeItem(debugBox);
+
+    debugBox = scene->addRect(rect);
 }

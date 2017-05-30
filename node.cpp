@@ -217,6 +217,14 @@ void Node::resizeToFitChildBox()
     update();
 }
 
+QRectF Node::getChildBoxInScene() const
+{
+    QPointF tl = mapToScene(childBox.topLeft());
+    QPointF br = mapToScene(childBox.bottomRight());
+
+    return QRectF(tl, br);
+}
+
 /////////////////
 /// Highlight ///
 /////////////////

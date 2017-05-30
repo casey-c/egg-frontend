@@ -5,6 +5,7 @@
 
 Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent),
+    showBounds(true),
     debugBox(nullptr),
     debugBox2(nullptr)
 {
@@ -48,8 +49,17 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         addCut();
         break;
     case Qt::Key_B:
-        if (highlighted != nullptr && !highlighted->isRoot())
-            drawBoundingBox(highlighted->getChildBoxInScene());
+        qDebug() << "show bounds is" << showBounds;
+        showBounds = !showBounds;
+        qDebug() << "toggle showBounds to" << showBounds;
+        if (!showBounds)
+        {
+            if (debugBox != nullptr)
+                scene->removeItem(debugBox);
+            if (debugBox2 != nullptr)
+                scene->removeItem(debugBox2);
+        }
+
         break;
     }
 }
@@ -81,6 +91,12 @@ void Canvas::addCut()
 // rect is in scene coords
 void Canvas::drawBoundingBox(QRectF rect)
 {
+    if (!showBounds)
+    {
+        qDebug() << "show bounds is false, so no adding";
+        return;
+    }
+
     if (debugBox != nullptr)
         scene->removeItem(debugBox);
 
@@ -89,6 +105,12 @@ void Canvas::drawBoundingBox(QRectF rect)
 
 void Canvas::drawSecondBox(QRectF rect)
 {
+    if (!showBounds)
+    {
+        qDebug() << "show bounds is false, so no adding";
+        return;
+    }
+
     if (debugBox2 != nullptr)
         scene->removeItem(debugBox2);
 

@@ -48,6 +48,7 @@ private:
     void highlightParent();
 
     // Debug
+    bool showBounds;
     QGraphicsRectItem* debugBox;
     QGraphicsRectItem* debugBox2;
 };

@@ -106,7 +106,7 @@ Node* Node::addChildCut(QPointF pt)
     children.append(newChild);
     newChild->setParentItem(this);
 
-    canvas->drawBoundingBox(rectToScene(newChild->collisionBox));
+    canvas->drawBoundingBox(newChild->getSceneCollisionBox());
 
     if ( !isRoot() )
     {
@@ -332,7 +332,7 @@ void Node::paint(QPainter* painter,
     if ( isCut() )
     {
         rect = QRectF(drawBox.topLeft(), drawBox.bottomRight());
-        printRect("paint rect", rect);
+        //printRect("paint rect", rect);
     }
 
     if (mouseDown)
@@ -494,12 +494,15 @@ QRectF Node::getSceneCollisionBox() const
     int w = drawBox.width();
     int h = drawBox.height();
 
-    QPointF mp = mapToScene(pos());
+    return QRectF( QPointF(pos().x() - COLLISION_OFFSET,
+                           pos().y() - COLLISION_OFFSET),
+                   QPointF(pos().x() + w + COLLISION_OFFSET,
+                           pos().y() + h + COLLISION_OFFSET));
 
-    return QRectF( mapToScene(QPointF(mp.x() - COLLISION_OFFSET,
-                                      mp.y() - COLLISION_OFFSET)),
-                   mapToScene(QPointF(mp.x() + w + COLLISION_OFFSET,
-                                      mp.y() + h + COLLISION_OFFSET)));
+     //return QRectF( mapToScene(QPointF(mp.x() - COLLISION_OFFSET,
+                                      //mp.y() - COLLISION_OFFSET)),
+                   //mapToScene(QPointF(mp.x() + w + COLLISION_OFFSET,
+                                      //mp.y() + h + COLLISION_OFFSET)));
 }
 
 /*
@@ -655,8 +658,8 @@ qreal dist(const QPointF &a, const QPointF &b)
  */
 bool rectsCollide(const QRectF &a, const QRectF &b)
 {
-    printRect("checking collision for a", a);
-    printRect("against b", b);
+    //printRect("checking collision for a", a);
+    //printRect("against b", b);
 
     qreal ax1, ax2, ay1, ay2;
     a.getCoords(&ax1, &ay1, &ax2, &ay2);

@@ -23,6 +23,7 @@ qreal dist(const QPointF &a, const QPointF &b);
 bool rectsCollide(const QRectF &a, const QRectF &b);
 void printPt(const QString &s, const QPointF &pt);
 void printRect(const QString &s, const QRectF &r);
+void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
 
 // Static var intitial declaration
 int Node::globalID = 0;
@@ -51,6 +52,10 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     mouseDown(false),
     lastHoverPos(0, 0),
     mouseOffset(0, 0),
+    minX(0),
+    minY(0),
+    maxX(0),
+    maxY(0),
     width(0),
     height(0)
 {
@@ -110,11 +115,56 @@ Node* Node::addChildCut(QPointF pt)
     if ( !isRoot() )
     {
         // Update min, max
+        updateChildMinMax();
+
         //calculateChildBox();
         //resizeToFitChildBox();
     }
 
     return newChild;
+}
+
+void Node::updateChildMinMax()
+{
+    qDebug() << "pre";
+    printMinMax(minX, minY, maxX, maxY);
+
+    canvas->clearBounds();
+
+    // Reset
+    minX = minY = maxX = maxY = 0;
+
+    for (Node* child : children)
+    {
+        QPointF tl, br;
+        if (child->hasDifferentPotentialBounds.checkAndClear())
+        {
+            tl = mapFromScene(child->scenePotentialBounds.topLeft());
+            br = mapFromScene(child->scenePotentialBounds.bottomRight());
+        }
+        else
+        {
+            tl = mapFromScene(child->getSceneCollisionBox().topLeft());
+            br = mapFromScene(child->getSceneCollisionBox().bottomRight());
+        }
+
+        if (tl.x() < minX)
+            minX = tl.x();
+        if (tl.y() < minY)
+            minY = tl.y();
+        if (br.x() > maxX)
+            maxX = br.x();
+        if (br.y() > maxY)
+            maxY = br.y();
+    }
+
+    qDebug() << "post";
+    printMinMax(minX, minY, maxX, maxY);
+
+    QRectF childBox(mapToScene(snapPoint(QPointF(minX, minY))),
+                    mapToScene(snapPoint(QPointF(maxX + GRID_SPACING,
+                                                 maxY + GRID_SPACING))));
+    canvas->addBlackBound(childBox);
 }
 
 // Assumes the quantum bool is set
@@ -411,6 +461,11 @@ QPointF Node::collisionLessPoint(QPointF val)
         if ( rectAvoidsCollision(rect) )
         {
             // TODO: percolate up
+            hasDifferentPotentialBounds.set();
+            scenePotentialBounds = rect;
+
+            if (!parent->isRoot())
+                parent->updateChildMinMax();
             return pt;
         }
     }
@@ -690,6 +745,18 @@ void printRect(const QString &s, const QRectF &r)
              << r.bottomRight().x()
              << ","
              << r.bottomRight().y();
+}
+
+void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY)
+{
+    qDebug() << "min: ("
+             << minX
+             << ","
+             << minY
+             << ") | max: ("
+             << maxX
+             << ","
+             << maxY;
 }
 
 

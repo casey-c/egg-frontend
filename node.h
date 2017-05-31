@@ -60,8 +60,6 @@ private:
 
     // Visual details
     NodeType type;
-    //QPointF upperLeftPt, bottomRightPt;
-    //qreal translateOffsetX, translateOffsetY;
     QString text;
 
     bool highlighted;
@@ -79,18 +77,16 @@ private:
 
     // Children
     QList<Node*> children;
-    //qreal minX, minY, maxX, maxY;
+    qreal minX, minY, maxX, maxY;
     //QRectF childBox;
 
     // New Important Points & Rects
     qreal width, height; // in absolute pixels (a multiple of GRID_SPACING)
 
-    //QuantumBool hasDifferentPotentialBounds; // mid movement
-
     QRectF drawBox; // size of everything that gets drawn by this node
-    //QRectF collisionBox; // drawBox, but grown in all directions by GRID_SPACING / 2 + 1
 
-    //QRectF potentialBounds;
+    QRectF scenePotentialBounds; // in scene coords
+    QuantumBool hasDifferentPotentialBounds; // mid movement
 
     ///////////////
     /// Methods ///
@@ -124,11 +120,14 @@ private:
     //void calculateChildBox();
     //void resizeToFitChildBox();
 
+    void updateChildMinMax();
+
     QRectF getPotentialSceneCollision(qreal deltaX, qreal deltaY) const;
 
     //QRectF getTranslatedDrawBox(qreal deltaX, qreal deltaY) const;
     QRectF getDrawAsCollision(const QRectF &draw) const;
     //QRectF rectToScene(const QRectF &rect) const;
+
 
     //QRectF convertTempCollisionToDrawBox();
 

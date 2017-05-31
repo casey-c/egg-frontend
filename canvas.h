@@ -13,6 +13,11 @@ public:
 
     void setHighlight(Node* node);
 
+    void clearBounds();
+    void addRedBound(QRectF rect);
+    void addBlackBound(QRectF rect);
+    void addBlueBound(QRectF rect);
+
 private:
     //////////////
     /// Fields ///
@@ -22,6 +27,8 @@ private:
     Node* highlighted;
 
     QPointF lastMousePos;
+
+    QGraphicsScene* scene;
 
     ///////////////
     /// Methods ///
@@ -42,6 +49,15 @@ private:
     void highlightRight();
     void highlightLeft();
     void highlightParent();
+
+    // Debug
+    bool showBounds;
+    //QGraphicsRectItem* debugBox;
+    //QGraphicsRectItem* debugBox2;
+
+    QList<QGraphicsRectItem*> blueBounds;
+    QList<QGraphicsRectItem*> blackBounds;
+    QList<QGraphicsRectItem*> redBounds;
 };
 
 #endif // CANVAS_H

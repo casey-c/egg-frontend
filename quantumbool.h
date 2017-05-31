@@ -39,6 +39,8 @@
  *   check(): simply returns the bool without changing it
  *   checkAndClear(): returns the bool then sets it to false
  *   checkAndSet(): returns the bool then sets it to true
+ *   set(): makes it true
+ *   clear(): makes it false
  */
 class QuantumBool
 {
@@ -49,6 +51,9 @@ public:
 
     bool checkAndClear();
     bool checkAndSet();
+
+    void set() { b = true; }
+    void clear() { b = false; }
 
 private:
     bool b;

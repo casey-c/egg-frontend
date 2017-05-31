@@ -112,20 +112,16 @@ Node* Node::addChildCut(QPointF pt)
     children.append(newChild);
     newChild->setParentItem(this);
 
-    if ( !isRoot() )
-    {
-        // Update min, max
-        updateChildMinMax();
-
-        //calculateChildBox();
-        //resizeToFitChildBox();
-    }
+    updateChildMinMax();
 
     return newChild;
 }
 
 void Node::updateChildMinMax()
 {
+    if ( isRoot() )
+        return;
+
     qDebug() << "pre";
     printMinMax(minX, minY, maxX, maxY);
 
@@ -180,9 +176,30 @@ void Node::updateChildMinMax()
         }
     }
     if (!collidesWithSibling)
+    {
         canvas->addBlackBound(childBox);
+
+        // TODO: make it only update on valid
+    }
     else
         canvas->addRedBound(childBox);
+
+    // Ideally these should be checked for validity first, but for now
+    // just update it regardless of collision
+    QRectF potential(mapFromScene(childBox.topLeft()),
+                     mapFromScene(childBox.bottomRight()));
+    setDrawBoxFromPotential(potential);
+
+    // Percolate up
+    parent->updateChildMinMax();
+}
+
+void Node::setDrawBoxFromPotential(QRectF potential)
+{
+    prepareGeometryChange();
+
+    drawBox = potential;
+
 }
 
 // Assumes the quantum bool is set
@@ -482,7 +499,7 @@ QPointF Node::collisionLessPoint(QPointF val)
             hasDifferentPotentialBounds.set();
             scenePotentialBounds = rect;
 
-            if (!parent->isRoot())
+            //if (!parent->isRoot())
                 parent->updateChildMinMax();
             return pt;
         }
@@ -553,10 +570,15 @@ QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
     int w = drawBox.width();
     int h = drawBox.height();
 
-    return QRectF( QPointF(scenePos().x() - COLLISION_OFFSET + deltaX,
-                           scenePos().y() - COLLISION_OFFSET + deltaY),
-                   QPointF(scenePos().x() + w + COLLISION_OFFSET + deltaX,
-                           scenePos().y() + h + COLLISION_OFFSET + deltaY));
+    return QRectF( mapToScene(QPointF(drawBox.x() - COLLISION_OFFSET + deltaX,
+                           drawBox.y() - COLLISION_OFFSET + deltaY)),
+                   mapToScene(QPointF(drawBox.x() + w + COLLISION_OFFSET + deltaX,
+                           drawBox.y() + h + COLLISION_OFFSET + deltaY)));
+
+    //return QRectF( QPointF(scenePos().x() - COLLISION_OFFSET + deltaX,
+                           //scenePos().y() - COLLISION_OFFSET + deltaY),
+                   //QPointF(scenePos().x() + w + COLLISION_OFFSET + deltaX,
+                           //scenePos().y() + h + COLLISION_OFFSET + deltaY));
 
      //return QRectF( mapToScene(QPointF(mp.x() - COLLISION_OFFSET,
                                       //mp.y() - COLLISION_OFFSET)),
@@ -634,6 +656,13 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
     shadow->setEnabled(true);
     mouseDown = true;
     update();
+
+    if (event->buttons() & Qt::RightButton)
+    {
+        qDebug() << "Right click";
+        canvas->clearBounds();
+        canvas->addBlackBound(this->getSceneCollisionBox());
+    }
 
     QGraphicsObject::mousePressEvent(event);
 }

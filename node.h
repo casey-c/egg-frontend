@@ -88,6 +88,8 @@ private:
     QRectF scenePotentialBounds; // in scene coords
     QuantumBool hasDifferentPotentialBounds; // mid movement
 
+    void setDrawBoxFromPotential(QRectF potential);
+
     ///////////////
     /// Methods ///
     ///////////////

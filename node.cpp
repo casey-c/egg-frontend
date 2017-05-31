@@ -132,7 +132,8 @@ void Node::updateChildMinMax()
     canvas->clearBounds();
 
     // Reset
-    minX = minY = maxX = maxY = 0;
+    minX = minY = 0;
+    maxX = maxY = EMPTY_CUT_SIZE;
 
     for (Node* child : children)
     {
@@ -164,7 +165,24 @@ void Node::updateChildMinMax()
     QRectF childBox(mapToScene(snapPoint(QPointF(minX, minY))),
                     mapToScene(snapPoint(QPointF(maxX + GRID_SPACING,
                                                  maxY + GRID_SPACING))));
-    canvas->addBlackBound(childBox);
+
+    bool collidesWithSibling = false;
+    for (Node* sibling : parent->children)
+    {
+        if (sibling == this)
+            continue;
+
+        if (rectsCollide(childBox, sibling->getSceneCollisionBox()))
+        {
+            canvas->addBlueBound(sibling->getSceneCollisionBox());
+            collidesWithSibling = true;
+            break;
+        }
+    }
+    if (!collidesWithSibling)
+        canvas->addBlackBound(childBox);
+    else
+        canvas->addRedBound(childBox);
 }
 
 // Assumes the quantum bool is set

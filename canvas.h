@@ -12,8 +12,11 @@ public:
     ~Canvas() {}
 
     void setHighlight(Node* node);
-    void drawBoundingBox(QRectF rect);
-    void drawSecondBox(QRectF rect);
+
+    void clearBounds();
+    void addRedBound(QRectF rect);
+    void addBlackBound(QRectF rect);
+    void addBlueBound(QRectF rect);
 
 private:
     //////////////
@@ -49,8 +52,12 @@ private:
 
     // Debug
     bool showBounds;
-    QGraphicsRectItem* debugBox;
-    QGraphicsRectItem* debugBox2;
+    //QGraphicsRectItem* debugBox;
+    //QGraphicsRectItem* debugBox2;
+
+    QList<QGraphicsRectItem*> blueBounds;
+    QList<QGraphicsRectItem*> blackBounds;
+    QList<QGraphicsRectItem*> redBounds;
 };
 
 #endif // CANVAS_H

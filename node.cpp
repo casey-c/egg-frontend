@@ -8,6 +8,8 @@
 #include <QtCore/QtMath>
 #include <QDebug>
 
+#define DEBUG_BOUNDS 1 // Make it 1 to enable B key to show bounds on move
+
 #define GRID_SPACING 16
 #define STROKE_ADJ 2
 
@@ -74,7 +76,6 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
         width = height = EMPTY_CUT_SIZE;
         drawBox = QRectF( QPointF(0, 0), QPointF(width, height) );
         setPos(snapPoint(pt));
-        //updateCollisionBox();
     }
 
     // Colors
@@ -105,8 +106,6 @@ Node* Node::addChildCut(QPointF pt)
     Node* newChild = new Node(canvas, this, Cut, mapFromScene(pt));
     children.append(newChild);
     newChild->setParentItem(this);
-
-    canvas->drawBoundingBox(newChild->getSceneCollisionBox());
 
     if ( !isRoot() )
     {
@@ -287,15 +286,7 @@ QRectF Node::boundingRect() const
 QPainterPath Node::shape() const
 {
     QPainterPath path;
-
     path.addRect( getDrawAsCollision(drawBox) );
-
-    //QRectF sceneColl = getSceneCollisionBox();
-    //QPointF tl = mapFromScene(sceneColl.topLeft());
-    //QPointF br = mapFromScene(sceneColl.bottomRight());
-    //path.addRect(QRectF(tl, br));
-
-    //path.addRect(collisionBox);
     return path;
 }
 
@@ -368,11 +359,6 @@ QVariant Node::itemChange(GraphicsItemChange change,
 {
     if ( change == ItemPositionChange && scene() )
         return collisionLessPoint(value.toPointF());
-    if ( change == ItemPositionHasChanged && scene() )
-    {
-        //updateCollisionBox();
-        canvas->drawBoundingBox(getSceneCollisionBox());
-    }
 
     return QGraphicsItem::itemChange(change, value);
 }
@@ -421,26 +407,12 @@ QPointF Node::collisionLessPoint(QPointF val)
         QRectF rect = getSceneCollisionBox(pt.x() - pos().x(),
                                            pt.y() - pos().y());
 
-        //QRectF rect = getPotentialSceneCollision(pt.x() - pos().x(),
-                                                 //pt.y() - pos().y());
+        // No collision with direct siblings
         if ( rectAvoidsCollision(rect) )
         {
-            // Found an okay place to move to
+            // TODO: percolate up
             return pt;
         }
-
-        /*
-        if ( rectAvoidsCollision(rect) )
-        {
-            // TODO: percolate up and check parents too
-            potentialBounds = QRectF( mapFromScene(rect.topLeft()),
-                                      mapFromScene(rect.bottomRight()));
-            hasDifferentPotentialBounds.set();
-            parent->calculateChildBox();
-            parent->resizeToFitChildBox();
-            return pt;
-        }
-        */
     }
 
     // None of those points avoided collision
@@ -456,36 +428,40 @@ bool Node::rectAvoidsCollision(QRectF rect) const
     if ( isRoot() )
         return true;
 
-    qDebug() << "trying to see if my (" << myID << ") is colliding";
+#if DEBUG_BOUNDS
+    canvas->clearBounds();
+    canvas->addBlueBound(rect);
+    bool ret = true;
+#endif
+
     for (Node* sibling : parent->children)
     {
         if (sibling == this)
             continue;
 
-        qDebug() << "Looking at sibling" << sibling->myID;
-
         QRectF sibBox = sibling->getSceneCollisionBox();
-        //QRectF sibBox = rectToScene(getDrawAsCollision(sibling->drawBox));
-
-        canvas->drawBoundingBox(rect);
-        canvas->drawSecondBox(sibBox);
 
         if (rectsCollide(rect, sibBox) )
         {
-            qDebug() << "---";
-            qDebug() << "Collision";
-            qDebug() << "---";
+#if DEBUG_BOUNDS
+            canvas->addRedBound(sibBox);
+            ret = false;
+#else
             return false;
+#endif
         }
+#if DEBUG_BOUNDS
         else
         {
-            qDebug() << "---";
-            qDebug() << "No collision!";
-            qDebug() << "---";
+            canvas->addBlackBound(sibBox);
         }
+#endif
     }
-
+#if DEBUG_BOUNDS
+    return ret;
+#else
     return true;
+#endif
 }
 
 /*

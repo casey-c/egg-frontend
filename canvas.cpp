@@ -5,9 +5,7 @@
 
 Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent),
-    showBounds(true),
-    debugBox(nullptr),
-    debugBox2(nullptr)
+    showBounds(false)
 {
     scene = new QGraphicsScene(this);
     scene->setItemIndexMethod(QGraphicsScene::NoIndex);
@@ -54,10 +52,7 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         qDebug() << "toggle showBounds to" << showBounds;
         if (!showBounds)
         {
-            if (debugBox != nullptr)
-                scene->removeItem(debugBox);
-            if (debugBox2 != nullptr)
-                scene->removeItem(debugBox2);
+            clearBounds();
         }
 
         break;
@@ -88,31 +83,37 @@ void Canvas::addCut()
     setHighlight(n);
 }
 
-// rect is in scene coords
-void Canvas::drawBoundingBox(QRectF rect)
+
+/// Debug Bounds ///
+
+void Canvas::clearBounds()
 {
-    if (!showBounds)
-    {
-        qDebug() << "show bounds is false, so no adding";
-        return;
-    }
+    for(QGraphicsRectItem* item : blueBounds)
+        scene->removeItem(item);
+    for(QGraphicsRectItem* item : blackBounds)
+        scene->removeItem(item);
+    for(QGraphicsRectItem* item : redBounds)
+        scene->removeItem(item);
 
-    if (debugBox != nullptr)
-        scene->removeItem(debugBox);
-
-    debugBox = scene->addRect(rect);
+    blueBounds.clear();
+    blackBounds.clear();
+    redBounds.clear();
 }
 
-void Canvas::drawSecondBox(QRectF rect)
+void Canvas::addRedBound(QRectF rect)
 {
-    if (!showBounds)
-    {
-        qDebug() << "show bounds is false, so no adding";
-        return;
-    }
+    if(showBounds)
+        redBounds.append(scene->addRect(rect, QPen(QColor(255, 0, 0))));
+}
 
-    if (debugBox2 != nullptr)
-        scene->removeItem(debugBox2);
+void Canvas::addBlackBound(QRectF rect)
+{
+    if(showBounds)
+        blackBounds.append(scene->addRect(rect, QPen(QColor(0, 0, 0))));
+}
 
-    debugBox2 = scene->addRect(rect, QPen(QColor(255, 0, 0)), QBrush());
+void Canvas::addBlueBound(QRectF rect)
+{
+    if(showBounds)
+        blueBounds.append(scene->addRect(rect, QPen(QColor(0, 0, 255))));
 }

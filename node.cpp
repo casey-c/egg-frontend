@@ -25,6 +25,13 @@ void printPt(const QString &s, const QPointF &pt);
 void printRect(const QString &s, const QRectF &r);
 void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
 
+// Helper struct
+struct NodePotential
+{
+    Node* node;
+    QRectF rect;
+};
+
 // Static var intitial declaration
 int Node::globalID = 0;
 
@@ -125,7 +132,7 @@ void Node::updateChildMinMax()
     qDebug() << "pre";
     printMinMax(minX, minY, maxX, maxY);
 
-    canvas->clearBounds();
+    //canvas->clearBounds();
 
     // Reset
     minX = minY = 0;
@@ -170,24 +177,25 @@ void Node::updateChildMinMax()
 
         if (rectsCollide(childBox, sibling->getSceneCollisionBox()))
         {
-            canvas->addBlueBound(sibling->getSceneCollisionBox());
+            //canvas->addBlueBound(sibling->getSceneCollisionBox());
             collidesWithSibling = true;
             break;
         }
     }
     if (!collidesWithSibling)
     {
-        canvas->addBlackBound(childBox);
+        //canvas->addBlackBound(childBox);
 
         // TODO: make it only update on valid
     }
-    else
-        canvas->addRedBound(childBox);
+    //else
+        //canvas->addRedBound(childBox);
 
     // Ideally these should be checked for validity first, but for now
     // just update it regardless of collision
     QRectF potential(mapFromScene(childBox.topLeft()),
                      mapFromScene(childBox.bottomRight()));
+    canvas->addRedBound(childBox);
     setDrawBoxFromPotential(potential);
 
     // Percolate up
@@ -499,10 +507,90 @@ QPointF Node::collisionLessPoint(QPointF val)
             hasDifferentPotentialBounds.set();
             scenePotentialBounds = rect;
 
-            // Parent potential
-            QRectF parPot = genParentPotential(rect);
             canvas->clearBounds();
-            canvas->addBlackBound(parPot);
+
+            bool noCollision = true;
+
+            QList<NodePotential*> nodesToUpdate;
+
+            Node* p = parent;
+            Node* c = this;
+            QRectF cPotRect = rect;
+
+            while (!p->isRoot())
+            {
+                // pPotRect is in scene coords
+                QRectF pPotRect = c->genParentPotential(cPotRect);
+                //canvas->addBlueBound(pPotRect);
+                //canvas->addBlackBound(cPotRect);
+
+                //p->setDrawBoxFromPotential(QRectF(p->mapFromScene(pPotRect.topLeft()),
+                                                  //p->mapFromScene(pPotRect.bottomRight())));
+
+                // Check if pPotRect collides with anything
+                // TODO: collision
+                for (Node* n : p->parent->children)
+                {
+                    if (n == p)
+                        continue;
+                    else
+                    {
+                        if (rectsCollide(pPotRect, n->getSceneCollisionBox()))
+                        {
+                            qDebug() << "Collision detected!";
+                            //canvas->addRedBound(pPotRect);
+                            //canvas->addBlueBound(n->getSceneCollisionBox());
+                            noCollision = false;
+                            break;
+                        }
+
+                    }
+                }
+
+                if (!noCollision)
+                    break;
+
+                // No collisions at this level, so store this info to update
+                // later if the percolation succeeds
+                NodePotential* np = new NodePotential;
+                np->node = p;
+                //np->rect = pPotRect;
+                np->rect = QRectF(p->mapFromScene(pPotRect.topLeft()),
+                                  p->mapFromScene(pPotRect.bottomRight()));
+                nodesToUpdate.append(np);
+
+                // Percolate up
+                c = c->parent;
+                p = p->parent;
+                cPotRect = pPotRect;
+            }
+
+            // A collision occured up in the percolation
+            if (!noCollision)
+            {
+                qDebug() << "Something collided -- no movement allowed";
+                // Something collided, so clean up allocation and return no
+                // movement
+                for (NodePotential* np : nodesToUpdate)
+                    delete np;
+                nodesToUpdate.clear();
+                return pos();
+            }
+
+            // If we've made it here, nothing collides so we must update
+            // all the parents to be their actual potentials
+            qDebug() << "No collisions up the tree -- We're good to go!";
+            for (NodePotential* np : nodesToUpdate)
+            {
+                np->node->setDrawBoxFromPotential(np->rect);
+                delete np;
+            }
+
+
+            // Parent potential
+            //QRectF parPot = genParentPotential(rect);
+            //canvas->clearBounds();
+            //canvas->addBlackBound(parPot);
 
             //parent->updateChildMinMax();
 
@@ -518,6 +606,8 @@ QPointF Node::collisionLessPoint(QPointF val)
  * Returns (in scene coords) a potential bounds for my parent based on my
  * altered drawbox. I.e. calculate and return a potential drawBox for my
  * direct parent.
+ *
+ * myPotential is in scene coords
  */
 QRectF Node::genParentPotential(QRectF myPotential)
 {
@@ -533,10 +623,8 @@ QRectF Node::genParentPotential(QRectF myPotential)
         if (sibling == this)
         {
             // Use my potential instead
-            tl = mapFromScene(myPotential.topLeft());
-            tl = mapToParent(tl);
-            br = mapFromScene(myPotential.bottomRight());
-            br = mapToParent(br);
+            tl = parent->mapFromScene(myPotential.topLeft());
+            br = parent->mapFromScene(myPotential.bottomRight());
             //canvas->addBlueBound(myPotential);
             //printPt("(potential)tl", tl);
             //printPt("(potential)br", br);
@@ -544,10 +632,8 @@ QRectF Node::genParentPotential(QRectF myPotential)
         else
         {
             // Use the sibling's actual scene collision bounds
-            tl = mapFromScene(sibling->getSceneCollisionBox().topLeft());
-            tl = mapToParent(tl);
-            br = mapFromScene(sibling->getSceneCollisionBox().bottomRight());
-            br = mapToParent(br);
+            tl = parent->mapFromScene(sibling->getSceneCollisionBox().topLeft());
+            br = parent->mapFromScene(sibling->getSceneCollisionBox().bottomRight());
             //printPt("tl", tl);
             //printPt("br", br);
         }
@@ -572,10 +658,10 @@ QRectF Node::genParentPotential(QRectF myPotential)
                           may + GRID_SPACING);
 
     // Convert back to scene
-    QPointF tls = parent->mapToScene(tlp);
-    QPointF brs = parent->mapToScene(brp);
+    QPointF tls = parent->mapToScene(snapPoint(tlp));
+    QPointF brs = parent->mapToScene(snapPoint(brp));
 
-    QRectF rect( snapPoint(tls), snapPoint(brs) );
+    QRectF rect(tls, brs);
     //canvas->addRedBound(rect);
     return rect;
 }

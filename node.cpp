@@ -499,14 +499,85 @@ QPointF Node::collisionLessPoint(QPointF val)
             hasDifferentPotentialBounds.set();
             scenePotentialBounds = rect;
 
-            //if (!parent->isRoot())
-                parent->updateChildMinMax();
+            // Parent potential
+            QRectF parPot = genParentPotential(rect);
+            canvas->clearBounds();
+            canvas->addBlackBound(parPot);
+
+            //parent->updateChildMinMax();
+
             return pt;
         }
     }
 
     // None of those points avoided collision
     return pos();
+}
+
+/*
+ * Returns (in scene coords) a potential bounds for my parent based on my
+ * altered drawbox. I.e. calculate and return a potential drawBox for my
+ * direct parent.
+ */
+QRectF Node::genParentPotential(QRectF myPotential)
+{
+    qreal mix, miy, max, may; // min max
+    mix = miy = 0;
+    max = may = EMPTY_CUT_SIZE;
+    QPointF tl, br;
+
+
+    //canvas->clearBounds();
+    for (Node* sibling : parent->children)
+    {
+        if (sibling == this)
+        {
+            // Use my potential instead
+            tl = mapFromScene(myPotential.topLeft());
+            tl = mapToParent(tl);
+            br = mapFromScene(myPotential.bottomRight());
+            br = mapToParent(br);
+            //canvas->addBlueBound(myPotential);
+            //printPt("(potential)tl", tl);
+            //printPt("(potential)br", br);
+        }
+        else
+        {
+            // Use the sibling's actual scene collision bounds
+            tl = mapFromScene(sibling->getSceneCollisionBox().topLeft());
+            tl = mapToParent(tl);
+            br = mapFromScene(sibling->getSceneCollisionBox().bottomRight());
+            br = mapToParent(br);
+            //printPt("tl", tl);
+            //printPt("br", br);
+        }
+
+        if (tl.x() < mix)
+            mix = tl.x();
+        if (tl.y() < miy)
+            miy = tl.y();
+        if (br.x() > max)
+            max = br.x();
+        if (br.y() > may)
+            may = br.y();
+
+        // Debug
+        //qDebug() << "min:" << mix << "," << miy;
+        //qDebug() << "max:" << max << "," << may;
+    }
+
+    // Calculated points are in parent coords
+    QPointF tlp = QPointF(mix, miy);
+    QPointF brp = QPointF(max + GRID_SPACING,
+                          may + GRID_SPACING);
+
+    // Convert back to scene
+    QPointF tls = parent->mapToScene(tlp);
+    QPointF brs = parent->mapToScene(brp);
+
+    QRectF rect( snapPoint(tls), snapPoint(brs) );
+    //canvas->addRedBound(rect);
+    return rect;
 }
 
 /*

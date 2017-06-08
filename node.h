@@ -90,6 +90,9 @@ private:
 
     void setDrawBoxFromPotential(QRectF potential);
 
+    void percolatePotentialSceneBounds();
+    QRectF genParentPotential(QRectF myPotential);
+
     ///////////////
     /// Methods ///
     ///////////////

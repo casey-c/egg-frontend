@@ -509,7 +509,7 @@ QPointF Node::collisionLessPoint(QPointF val)
 
             canvas->clearBounds();
 
-            bool noCollision = true;
+            bool avoidedCollision = true;
 
             QList<NodePotential*> nodesToUpdate;
 
@@ -519,42 +519,28 @@ QPointF Node::collisionLessPoint(QPointF val)
 
             while (!p->isRoot())
             {
-                // pPotRect is in scene coords
+                // Parent potential rect is in scene coords
                 QRectF pPotRect = c->genParentPotential(cPotRect);
-                //canvas->addBlueBound(pPotRect);
-                //canvas->addBlackBound(cPotRect);
 
-                //p->setDrawBoxFromPotential(QRectF(p->mapFromScene(pPotRect.topLeft()),
-                                                  //p->mapFromScene(pPotRect.bottomRight())));
-
-                // Check if pPotRect collides with anything
-                // TODO: collision
+                // Check if parent potential rect collides with anything
                 for (Node* n : p->parent->children)
                 {
                     if (n == p)
                         continue;
-                    else
+                    if (rectsCollide(pPotRect, n->getSceneCollisionBox()))
                     {
-                        if (rectsCollide(pPotRect, n->getSceneCollisionBox()))
-                        {
-                            qDebug() << "Collision detected!";
-                            //canvas->addRedBound(pPotRect);
-                            //canvas->addBlueBound(n->getSceneCollisionBox());
-                            noCollision = false;
-                            break;
-                        }
-
+                        avoidedCollision = false;
+                        break;
                     }
                 }
 
-                if (!noCollision)
+                if (!avoidedCollision)
                     break;
 
                 // No collisions at this level, so store this info to update
                 // later if the percolation succeeds
                 NodePotential* np = new NodePotential;
                 np->node = p;
-                //np->rect = pPotRect;
                 np->rect = QRectF(p->mapFromScene(pPotRect.topLeft()),
                                   p->mapFromScene(pPotRect.bottomRight()));
                 nodesToUpdate.append(np);
@@ -565,35 +551,22 @@ QPointF Node::collisionLessPoint(QPointF val)
                 cPotRect = pPotRect;
             }
 
-            // A collision occured up in the percolation
-            if (!noCollision)
+            // A collision occured up in the percolation: clean up allocation
+            if (!avoidedCollision)
             {
-                qDebug() << "Something collided -- no movement allowed";
-                // Something collided, so clean up allocation and return no
-                // movement
                 for (NodePotential* np : nodesToUpdate)
                     delete np;
-                nodesToUpdate.clear();
-                return pos();
+                continue; // check the next potential pt
             }
 
-            // If we've made it here, nothing collides so we must update
-            // all the parents to be their actual potentials
-            qDebug() << "No collisions up the tree -- We're good to go!";
+            // Everything's ok: update the drawBoxes to the saved potentials
             for (NodePotential* np : nodesToUpdate)
             {
                 np->node->setDrawBoxFromPotential(np->rect);
                 delete np;
             }
 
-
-            // Parent potential
-            //QRectF parPot = genParentPotential(rect);
-            //canvas->clearBounds();
-            //canvas->addBlackBound(parPot);
-
-            //parent->updateChildMinMax();
-
+            // And perform the move
             return pt;
         }
     }

@@ -14,6 +14,7 @@
 #define STROKE_ADJ 2
 
 #define EMPTY_CUT_SIZE (4 * GRID_SPACING)
+#define STATEMENT_SIZE (2 * GRID_SPACING)
 
 #define COLLISION_OFFSET (GRID_SPACING / 2) + 1
 
@@ -114,6 +115,56 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     gradClicked.setColorAt(1, QColor(240, 240, 240));
 }
 
+/* Statement constructor */
+Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
+    canvas(can),
+    parent(par),
+    type(Statement),
+    highlighted(false),
+    mouseDown(false),
+    lastHoverPos(0, 0),
+    mouseOffset(0, 0),
+    width(0),
+    height(0),
+    letter(s)
+{
+    shadow = new QGraphicsDropShadowEffect(this);
+    shadow->setEnabled(false);
+    shadow->setBlurRadius(2);
+    shadow->setOffset(2);
+    this->setGraphicsEffect(shadow);
+
+    setFlag(ItemIsMovable);
+    setFlag(ItemSendsGeometryChanges);
+    setCacheMode(DeviceCoordinateCache);
+    setAcceptHoverEvents(true);
+
+    width = height = STATEMENT_SIZE;
+    drawBox = QRectF( QPointF(0, 0), QPointF(width, height));
+    setPos(snapPoint(pt));
+
+    gradDefault = QRadialGradient( drawBox.x() + 3,
+                                   drawBox.y() + 3,
+                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    gradDefault.setColorAt(0, QColor(0, 0, 0, 0));
+    gradDefault.setColorAt(1, QColor(0, 0, 0, 0));
+
+    gradHighlighted = QRadialGradient( drawBox.x() + 3,
+                                       drawBox.y() + 3,
+                                       (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    gradHighlighted.setColorAt(0, QColor(240, 240, 240));
+    gradHighlighted.setColorAt(1, QColor(210, 210, 210));
+
+    gradClicked = QRadialGradient( drawBox.x() + 3,
+                                   drawBox.y() + 3,
+                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    gradClicked.setColorAt(0, QColor(210, 210, 210));
+    gradClicked.setColorAt(1, QColor(240, 240, 240));
+
+    font = QFont();
+    font.setPixelSize(GRID_SPACING * 2 - 6);
+}
+
 /*
  * Allocates a new child cut and returns a ptr to it
  */
@@ -123,7 +174,16 @@ Node* Node::addChildCut(QPointF pt)
     children.append(newChild);
     newChild->setParentItem(this);
 
-    updateChildMinMax();
+    //updateChildMinMax();
+
+    return newChild;
+}
+
+Node* Node::addChildStatement(QPointF pt, QString t)
+{
+    Node* newChild = new Node(canvas, this, t, mapFromScene(pt));
+    children.append(newChild);
+    newChild->setParentItem(this);
 
     return newChild;
 }
@@ -425,11 +485,12 @@ void Node::paint(QPainter* painter,
 
     QRectF rect;
 
-    if ( isCut() )
-    {
-        rect = QRectF(drawBox.topLeft(), drawBox.bottomRight());
-        //printRect("paint rect", rect);
-    }
+    if ( isCut() || isStatement() )
+        //rect = QRectF(drawBox.topLeft(), drawBox.bottomRight());
+        rect = drawBox;
+
+    if (isStatement())
+        painter->setPen(QPen(QColor(0,0,0,0)));
 
     if (mouseDown)
         painter->setBrush(QBrush(gradClicked));
@@ -439,6 +500,14 @@ void Node::paint(QPainter* painter,
         painter->setBrush(QBrush(gradDefault));
 
     painter->drawRoundedRect(rect, BORDER_RADIUS, BORDER_RADIUS);
+
+    if ( isStatement() )
+    {
+        painter->setPen(QPen(QColor(0,0,0,255)));
+        painter->setFont(font);
+        painter->drawText( rect, Qt::AlignCenter, letter );
+        qDebug() << "finished drawing text" << letter;
+    }
 }
 
 //////////////
@@ -590,7 +659,7 @@ QRectF Node::genParentPotential(QRectF myPotential)
 {
     qreal mix, miy, max, may; // min max
     mix = miy = 0;
-    max = may = EMPTY_CUT_SIZE;
+    max = may = STATEMENT_SIZE;
     QPointF tl, br;
 
 

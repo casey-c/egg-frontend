@@ -93,12 +93,16 @@ private:
     void percolatePotentialSceneBounds();
     QRectF genParentPotential(QRectF myPotential);
 
+    QString letter;
+    QFont font;
+
     ///////////////
     /// Methods ///
     ///////////////
 
     // Private constructor
     Node(Canvas* can, Node* par, NodeType t, QPointF pt);
+    Node(Canvas* can, Node* par, QString s, QPointF pt);
 
     // Graphics
     QRectF boundingRect() const override;

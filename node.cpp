@@ -17,6 +17,8 @@
 
 #define COLLISION_OFFSET (GRID_SPACING / 2) + 1
 
+#define BORDER_RADIUS 10
+
 // Forward declarations for helper functions (implementation located at end)
 QPointF snapPoint(const QPointF &pt);
 qreal dist(const QPointF &a, const QPointF &b);
@@ -94,8 +96,10 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     gradDefault = QRadialGradient( drawBox.x() + 3,
                                    drawBox.y() + 3,
                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradDefault.setColorAt(0, QColor(225, 225, 225));
-    gradDefault.setColorAt(1, QColor(185, 185, 185));
+    //gradDefault.setColorAt(0, QColor(225, 225, 225));
+    //gradDefault.setColorAt(1, QColor(185, 185, 185));
+    gradDefault.setColorAt(0, QColor(249, 249, 249));
+    gradDefault.setColorAt(1, QColor(249, 249, 249));
 
     gradHighlighted = QRadialGradient( drawBox.x() + 3,
                                        drawBox.y() + 3,
@@ -434,7 +438,7 @@ void Node::paint(QPainter* painter,
     else
         painter->setBrush(QBrush(gradDefault));
 
-    painter->drawRoundedRect(rect, 5, 5);
+    painter->drawRoundedRect(rect, BORDER_RADIUS, BORDER_RADIUS);
 }
 
 //////////////

@@ -24,18 +24,18 @@ Canvas::Canvas(QWidget* parent) :
 
 void Canvas::drawBackground(QPainter* painter, const QRectF &rect)
 {
-    QRectF sceneRect = this->sceneRect();
+    //QRectF sceneRect = this->sceneRect();
 
-    QLinearGradient gradient(sceneRect.topLeft(),
-                             sceneRect.bottomRight());
-    gradient.setColorAt(0, Qt::white);
-    gradient.setColorAt(1, QColor(Qt::lightGray).lighter(150));
+    //QLinearGradient gradient(sceneRect.topLeft(),
+                             //sceneRect.bottomRight());
+    //gradient.setColorAt(0, Qt::white);
+    //gradient.setColorAt(1, QColor(Qt::lightGray).lighter(150));
 
-    painter->fillRect(rect.intersected(sceneRect),
-                      gradient);
+    //painter->fillRect(rect.intersected(sceneRect),
+                      //gradient);
 
-    painter->setBrush(Qt::NoBrush);
-    painter->drawRect(sceneRect);
+    //painter->setBrush(Qt::NoBrush);
+    //painter->drawRect(sceneRect);
 }
 
 void Canvas::keyPressEvent(QKeyEvent* event)

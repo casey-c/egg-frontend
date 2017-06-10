@@ -44,6 +44,7 @@ private:
     // Add
     void addCut();
     void addStatement(QString s);
+    void addPlaceholder();
 
     // Highlight
     void highlightRoot();

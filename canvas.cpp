@@ -74,6 +74,9 @@ void Canvas::keyPressEvent(QKeyEvent* event)
     case Qt::Key_F:
         addStatement("F");
         break;
+    case Qt::Key_4:
+        addPlaceholder();
+        break;
     }
 }
 
@@ -105,6 +108,18 @@ void Canvas::addCut()
 void Canvas::addStatement(QString s)
 {
     Node* n = highlighted->addChildStatement(lastMousePos, s);
+    if (n == nullptr)
+        return;
+
+    if (n->getParent() == root)
+        scene->addItem(n);
+
+    setHighlight(n);
+}
+
+void Canvas::addPlaceholder()
+{
+    Node* n = highlighted->addChildStatement(lastMousePos, "");
     if (n == nullptr)
         return;
 

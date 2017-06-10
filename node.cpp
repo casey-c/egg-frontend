@@ -506,7 +506,6 @@ void Node::paint(QPainter* painter,
         painter->setPen(QPen(QColor(0,0,0,255)));
         painter->setFont(font);
         painter->drawText( rect, Qt::AlignCenter, letter );
-        qDebug() << "finished drawing text" << letter;
     }
 }
 
@@ -632,9 +631,15 @@ QPointF Node::collisionLessPoint(QPointF val)
                 continue; // check the next potential pt
             }
 
+            //canvas->clearBounds();
+
             // Everything's ok: update the drawBoxes to the saved potentials
             for (NodePotential* np : nodesToUpdate)
             {
+                QPointF tl = np->node->mapToScene(np->rect.topLeft());
+                QPointF br = np->node->mapToScene(np->rect.bottomRight());
+                //canvas->addBlueBound(QRectF(tl, br));
+
                 np->node->setDrawBoxFromPotential(np->rect);
                 delete np;
             }
@@ -671,7 +676,7 @@ QRectF Node::genParentPotential(QRectF myPotential)
             // Use my potential instead
             tl = parent->mapFromScene(myPotential.topLeft());
             br = parent->mapFromScene(myPotential.bottomRight());
-            //canvas->addBlueBound(myPotential);
+            canvas->addBlueBound(myPotential);
             //printPt("(potential)tl", tl);
             //printPt("(potential)br", br);
         }
@@ -680,6 +685,7 @@ QRectF Node::genParentPotential(QRectF myPotential)
             // Use the sibling's actual scene collision bounds
             tl = parent->mapFromScene(sibling->getSceneCollisionBox().topLeft());
             br = parent->mapFromScene(sibling->getSceneCollisionBox().bottomRight());
+            canvas->addGreenBound(sibling->getSceneCollisionBox());
             //printPt("tl", tl);
             //printPt("br", br);
         }
@@ -708,7 +714,7 @@ QRectF Node::genParentPotential(QRectF myPotential)
     QPointF brs = parent->mapToScene(snapPoint(brp));
 
     QRectF rect(tls, brs);
-    //canvas->addRedBound(rect);
+    canvas->addRedBound(rect);
     return rect;
 }
 

@@ -148,3 +148,10 @@ void Canvas::addBlueBound(QRectF rect)
     if(showBounds)
         blueBounds.append(scene->addRect(rect, QPen(QColor(0, 0, 255))));
 }
+
+void Canvas::addGreenBound(QRectF rect)
+{
+    if(showBounds)
+        blueBounds.append(scene->addRect(rect, QPen(QColor(0, 255, 0))));
+}
+

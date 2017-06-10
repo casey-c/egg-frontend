@@ -658,7 +658,9 @@ QPointF Node::collisionLessPoint(QPointF val)
  * altered drawbox. I.e. calculate and return a potential drawBox for my
  * direct parent.
  *
- * myPotential is in scene coords
+ * myPotential is in scene coords (and it is a collision box)
+ *
+ * originally, we're returning a draw box, which is NO GOOD
  */
 QRectF Node::genParentPotential(QRectF myPotential)
 {
@@ -677,8 +679,8 @@ QRectF Node::genParentPotential(QRectF myPotential)
             tl = parent->mapFromScene(myPotential.topLeft());
             br = parent->mapFromScene(myPotential.bottomRight());
             canvas->addBlueBound(myPotential);
-            //printPt("(potential)tl", tl);
-            //printPt("(potential)br", br);
+            printPt("(potential)tl", tl);
+            printPt("(potential)br", br);
         }
         else
         {
@@ -686,8 +688,8 @@ QRectF Node::genParentPotential(QRectF myPotential)
             tl = parent->mapFromScene(sibling->getSceneCollisionBox().topLeft());
             br = parent->mapFromScene(sibling->getSceneCollisionBox().bottomRight());
             canvas->addGreenBound(sibling->getSceneCollisionBox());
-            //printPt("tl", tl);
-            //printPt("br", br);
+            printPt("tl", tl);
+            printPt("br", br);
         }
 
         if (tl.x() < mix)
@@ -705,13 +707,17 @@ QRectF Node::genParentPotential(QRectF myPotential)
     }
 
     // Calculated points are in parent coords
+    printMinMax(mix, miy, max, may);
     QPointF tlp = QPointF(mix, miy);
     QPointF brp = QPointF(max + GRID_SPACING,
                           may + GRID_SPACING);
+    //QPointF brp = QPointF(max, may);
 
     // Convert back to scene
     QPointF tls = parent->mapToScene(snapPoint(tlp));
     QPointF brs = parent->mapToScene(snapPoint(brp));
+    printPt("snapped tls", tls);
+    printPt("snapped brs", brs);
 
     QRectF rect(tls, brs);
     canvas->addRedBound(rect);
@@ -776,6 +782,12 @@ bool Node::rectAvoidsCollision(QRectF rect) const
 
 QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
 {
+    QRectF my = getDrawAsCollision(drawBox);
+    return QRectF(mapToScene( QPointF(my.topLeft().x() + deltaX,
+                                      my.topLeft().y() + deltaY)),
+                  mapToScene( QPointF(my.bottomRight().x() + deltaX,
+                                      my.bottomRight().y() + deltaY )));
+    //old:
     int w = drawBox.width();
     int h = drawBox.height();
 
@@ -816,10 +828,16 @@ QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
  */
 QRectF Node::getDrawAsCollision(const QRectF &draw) const
 {
-    return QRectF(QPointF(draw.topLeft().x() - COLLISION_OFFSET,
-                          draw.topLeft().y() - COLLISION_OFFSET),
-                  QPointF(draw.bottomRight().x() + COLLISION_OFFSET,
-                          draw.bottomRight().y() + COLLISION_OFFSET));
+    qDebug() << "draw top left x is " << draw.topLeft().x();
+    qDebug() << "collision offset is " << COLLISION_OFFSET;
+    qDebug() << "altered is" << draw.topLeft().x() - COLLISION_OFFSET;
+    qreal delta = COLLISION_OFFSET;
+    qDebug() << "with qreal " << draw.topLeft().x() - delta;
+
+    return QRectF(QPointF(draw.topLeft().x() - qreal(COLLISION_OFFSET),
+                          draw.topLeft().y() - qreal(COLLISION_OFFSET)),
+                  QPointF(draw.bottomRight().x() + qreal(COLLISION_OFFSET),
+                          draw.bottomRight().y() + qreal(COLLISION_OFFSET)));
 }
 
 /*
@@ -871,6 +889,13 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
         qDebug() << "Right click";
         canvas->clearBounds();
         canvas->addBlackBound(this->getSceneCollisionBox());
+
+        QRectF dr( mapToScene(drawBox.topLeft()), mapToScene(drawBox.bottomRight()));
+        canvas->addGreenBound(dr);
+
+        qDebug() << "coll off" << COLLISION_OFFSET;
+        printRect("dr", dr);
+        printRect("coll", this->getSceneCollisionBox());
     }
 
     QGraphicsObject::mousePressEvent(event);
@@ -1012,7 +1037,8 @@ void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY)
              << ") | max: ("
              << maxX
              << ","
-             << maxY;
+             << maxY
+             << ")";
 }
 
 

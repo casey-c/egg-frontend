@@ -397,12 +397,14 @@ QPointF Node::collisionLessPoint(QPointF val)
 QRectF Node::genParentPotential(QRectF myPotential)
 {
     qreal mix, miy, max, may; // min max
-    mix = miy = 0;
+
+    //mix = miy = 0; // this shouldn't be 0!
+    //mix = miy = qreal(-3 * GRID_SPACING); // on the right track...
+    mix = miy = qreal(-2 * GRID_SPACING - 2 * COLLISION_OFFSET);
+
     max = may = qreal(STATEMENT_SIZE);
     QPointF tl, br;
 
-
-    //canvas->clearBounds();
     for (Node* sibling : parent->children)
     {
         if (sibling == this)
@@ -441,15 +443,19 @@ QRectF Node::genParentPotential(QRectF myPotential)
     // Calculated points are in parent coords
     printMinMax(mix, miy, max, may);
     QPointF tlp = QPointF(mix, miy);
-    QPointF brp = QPointF(max + qreal(GRID_SPACING),
-                          may + qreal(GRID_SPACING));
-    //QPointF brp = QPointF(max, may);
+    //QPointF brp = QPointF(max + qreal(COLLISION_OFFSET),
+                          //may + qreal(COLLISION_OFFSET));
+    //QPointF brp = QPointF(max + qreal(GRID_SPACING),
+                          //may + qreal(GRID_SPACING));
+    QPointF brp = QPointF(max, may);
 
     // Convert back to scene
-    QPointF tls = parent->mapToScene(snapPoint(tlp));
-    QPointF brs = parent->mapToScene(snapPoint(brp));
-    printPt("snapped tls", tls);
-    printPt("snapped brs", brs);
+    //QPointF tls = parent->mapToScene(snapPoint(tlp));
+    //QPointF brs = parent->mapToScene(snapPoint(brp));
+    //printPt("snapped tls", tls);
+    //printPt("snapped brs", brs);
+    QPointF tls = parent->mapToScene(tlp);
+    QPointF brs = parent->mapToScene(brp);
 
     QRectF rect(tls, brs);
     canvas->addRedBound(rect);

@@ -183,8 +183,9 @@ void Node::setDrawBoxFromPotential(QRectF potential)
 {
     prepareGeometryChange();
 
-    drawBox = potential;
-
+    QRectF sceneDraw = sceneCollisionToSceneDraw(potential);
+    drawBox = QRectF(mapFromScene(sceneDraw.topLeft()),
+                     mapFromScene(sceneDraw.bottomRight()));
 }
 
 /////////////////
@@ -360,8 +361,9 @@ QPointF Node::collisionLessPoint(QPointF val)
                 // later if the percolation succeeds
                 NodePotential* np = new NodePotential;
                 np->node = p;
-                np->rect = QRectF(p->mapFromScene(pPotRect.topLeft()),
-                                  p->mapFromScene(pPotRect.bottomRight()));
+                np->rect = pPotRect;
+                //np->rect = QRectF(p->mapFromScene(pPotRect.topLeft()),
+                                  //p->mapFromScene(pPotRect.bottomRight()));
                 nodesToUpdate.append(np);
 
                 // Percolate up
@@ -400,7 +402,8 @@ QRectF Node::genParentPotential(QRectF myPotential)
 
     //mix = miy = 0; // this shouldn't be 0!
     //mix = miy = qreal(-3 * GRID_SPACING); // on the right track...
-    mix = miy = qreal(-2 * GRID_SPACING - 2 * COLLISION_OFFSET);
+    //mix = miy = qreal(-2 * GRID_SPACING - 2 * COLLISION_OFFSET);
+    mix = miy = 0;
 
     max = may = qreal(STATEMENT_SIZE);
     QPointF tl, br;
@@ -410,8 +413,9 @@ QRectF Node::genParentPotential(QRectF myPotential)
         if (sibling == this)
         {
             // Use my potential instead
-            tl = parent->mapFromScene(myPotential.topLeft());
-            br = parent->mapFromScene(myPotential.bottomRight());
+            QRectF potDraw = getDrawAsCollision(myPotential);
+            tl = parent->mapFromScene(potDraw.topLeft());
+            br = parent->mapFromScene(potDraw.bottomRight());
             canvas->addBlueBound(myPotential);
             printPt("(potential)tl", tl);
             printPt("(potential)br", br);
@@ -419,8 +423,11 @@ QRectF Node::genParentPotential(QRectF myPotential)
         else
         {
             // Use the sibling's actual scene collision bounds
-            tl = parent->mapFromScene(sibling->getSceneCollisionBox().topLeft());
-            br = parent->mapFromScene(sibling->getSceneCollisionBox().bottomRight());
+            //tl = parent->mapFromScene(sibling->getSceneCollisionBox().topLeft());
+            //br = parent->mapFromScene(sibling->getSceneCollisionBox().bottomRight());
+            QRectF sceneDraw = getDrawAsCollision(sibling->getSceneCollisionBox());
+            tl = parent->mapFromScene(sceneDraw.topLeft());
+            br = parent->mapFromScene(sceneDraw.bottomRight());
             canvas->addGreenBound(sibling->getSceneCollisionBox());
             printPt("tl", tl);
             printPt("br", br);
@@ -459,7 +466,8 @@ QRectF Node::genParentPotential(QRectF myPotential)
 
     QRectF rect(tls, brs);
     canvas->addRedBound(rect);
-    return rect;
+    return getDrawAsCollision(rect);
+    //return rect;
 }
 
 bool Node::rectAvoidsCollision(QRectF rect) const
@@ -549,6 +557,8 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
         qDebug() << "coll off" << COLLISION_OFFSET;
         printRect("dr", dr);
         printRect("coll", this->getSceneCollisionBox());
+
+        canvas->addRedBound(sceneCollisionToSceneDraw(getSceneCollisionBox()));
     }
 
     QGraphicsObject::mousePressEvent(event);
@@ -573,6 +583,19 @@ void Node::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
     canvas->setHighlight(parent);
     QGraphicsObject::hoverLeaveEvent(event);
+}
+
+/// New ///
+
+// rect is a collision box in scene coords
+// this function just reverses what the getSceneCollisionBox
+// does to a given rectangle
+QRectF Node::sceneCollisionToSceneDraw(QRectF rect)
+{
+    return QRectF( QPointF( rect.topLeft().x() + qreal(COLLISION_OFFSET),
+                            rect.topLeft().y() + qreal(COLLISION_OFFSET)),
+                   QPointF( rect.bottomRight().x() - qreal(COLLISION_OFFSET),
+                            rect.bottomRight().y() - qreal(COLLISION_OFFSET)) );
 }
 
 ///////////////

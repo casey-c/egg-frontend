@@ -83,11 +83,12 @@ private:
 
     void setDrawBoxFromPotential(QRectF potential);
 
-    void percolatePotentialSceneBounds();
     QRectF genParentPotential(QRectF myPotential);
 
     QString letter;
     QFont font;
+
+    QRectF sceneCollisionToSceneDraw(QRectF rect);
 
     ///////////////
     /// Methods ///

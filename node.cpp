@@ -14,6 +14,7 @@
 
 #define EMPTY_CUT_SIZE (4 * GRID_SPACING)
 #define STATEMENT_SIZE (2 * GRID_SPACING)
+#define BIG_NUMBER 999999999
 
 #define BORDER_RADIUS 10
 
@@ -399,41 +400,27 @@ QPointF Node::collisionLessPoint(QPointF val)
 QRectF Node::genParentPotential(QRectF myPotential)
 {
     qreal mix, miy, max, may; // min max
+    mix = miy = BIG_NUMBER;
+    max = may = -BIG_NUMBER;
 
-    //mix = miy = 0; // this shouldn't be 0!
-    //mix = miy = qreal(-3 * GRID_SPACING); // on the right track...
-    //mix = miy = qreal(-2 * GRID_SPACING - 2 * COLLISION_OFFSET);
-    mix = miy = 999999999;
-
-    max = may = -999999999;
-    // maybe width of the child drawBox if shifted left?
     QPointF tl, br;
-
     for (Node* sibling : parent->children)
     {
         if (sibling == this)
         {
-            // Use my potential instead
-            //QRectF potDraw = getDrawAsCollision(myPotential);
+            // Convert the given argument to a drawBox
             QRectF potDraw = sceneCollisionToSceneDraw(myPotential);
             tl = parent->mapFromScene(potDraw.topLeft());
             br = parent->mapFromScene(potDraw.bottomRight());
             canvas->addBlueBound(potDraw);
-            printPt("(potential)tl", tl);
-            printPt("(potential)br", br);
         }
         else
         {
-            // Use the sibling's actual scene collision bounds
-            //tl = parent->mapFromScene(sibling->getSceneCollisionBox().topLeft());
-            //br = parent->mapFromScene(sibling->getSceneCollisionBox().bottomRight());
-            //QRectF sceneDraw = getDrawAsCollision(sibling->getSceneCollisionBox());
+            // Use the existing drawBox
             QRectF sceneDraw = sceneCollisionToSceneDraw(sibling->getSceneCollisionBox());
             tl = parent->mapFromScene(sceneDraw.topLeft());
             br = parent->mapFromScene(sceneDraw.bottomRight());
             canvas->addGreenBound(sceneDraw);
-            printPt("tl", tl);
-            printPt("br", br);
         }
 
         if (tl.x() < mix)
@@ -444,36 +431,32 @@ QRectF Node::genParentPotential(QRectF myPotential)
             max = br.x();
         if (br.y() > may)
             may = br.y();
-
-        // Debug
-        //qDebug() << "min:" << mix << "," << miy;
-        //qDebug() << "max:" << max << "," << may;
     }
 
-    qreal cw = max - mix;
-    qreal ch = may - miy;
-    qDebug() << "width" << cw << "height" << ch;
-    //if (cw + mix > max)
-        //max = cw + mix;
-    //if (ch + miy > may)
-        //may = ch + miy;
+    // Absolutely disgusting placeholder logic
+    if (parent->children.size() == 1)
+    {
+        qreal cw = max - mix;
+        qreal ch = may - miy;
+
+        if (cw > max)
+            max = cw;
+        if (ch > may)
+            may = ch;
+        if (mix > 0)
+            mix = 0;
+        if (miy > 0)
+            miy = 0;
+    }
 
     // Calculated points are in parent coords
     printMinMax(mix, miy, max, may);
     QPointF tlp = QPointF(mix - qreal(GRID_SPACING),
                           miy - qreal(GRID_SPACING));
-    //QPointF brp = QPointF(max + qreal(COLLISION_OFFSET),
-                          //may + qreal(COLLISION_OFFSET));
-    //QPointF brp = QPointF(max + qreal(GRID_SPACING),
-                          //may + qreal(GRID_SPACING));
     QPointF brp = QPointF(max + qreal(GRID_SPACING),
                           may + qreal(GRID_SPACING));
 
     // Convert back to scene
-    //QPointF tls = parent->mapToScene(snapPoint(tlp));
-    //QPointF brs = parent->mapToScene(snapPoint(brp));
-    //printPt("snapped tls", tls);
-    //printPt("snapped brs", brs);
     QPointF tls = parent->mapToScene(tlp);
     QPointF brs = parent->mapToScene(brp);
 
@@ -481,7 +464,6 @@ QRectF Node::genParentPotential(QRectF myPotential)
     canvas->addBlackBound(rect);
     canvas->addRedBound(getDrawAsCollision(rect));
     return getDrawAsCollision(rect);
-    //return rect;
 }
 
 bool Node::rectAvoidsCollision(QRectF rect) const

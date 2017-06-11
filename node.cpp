@@ -403,9 +403,10 @@ QRectF Node::genParentPotential(QRectF myPotential)
     //mix = miy = 0; // this shouldn't be 0!
     //mix = miy = qreal(-3 * GRID_SPACING); // on the right track...
     //mix = miy = qreal(-2 * GRID_SPACING - 2 * COLLISION_OFFSET);
-    mix = miy = 0;
+    mix = miy = 999999999;
 
-    max = may = qreal(STATEMENT_SIZE);
+    max = may = -999999999;
+    // maybe width of the child drawBox if shifted left?
     QPointF tl, br;
 
     for (Node* sibling : parent->children)
@@ -449,6 +450,14 @@ QRectF Node::genParentPotential(QRectF myPotential)
         //qDebug() << "max:" << max << "," << may;
     }
 
+    qreal cw = max - mix;
+    qreal ch = may - miy;
+    qDebug() << "width" << cw << "height" << ch;
+    //if (cw + mix > max)
+        //max = cw + mix;
+    //if (ch + miy > may)
+        //may = ch + miy;
+
     // Calculated points are in parent coords
     printMinMax(mix, miy, max, may);
     QPointF tlp = QPointF(mix - qreal(GRID_SPACING),
@@ -469,7 +478,8 @@ QRectF Node::genParentPotential(QRectF myPotential)
     QPointF brs = parent->mapToScene(brp);
 
     QRectF rect(tls, brs);
-    canvas->addRedBound(rect);
+    canvas->addBlackBound(rect);
+    canvas->addRedBound(getDrawAsCollision(rect));
     return getDrawAsCollision(rect);
     //return rect;
 }

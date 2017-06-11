@@ -413,10 +413,11 @@ QRectF Node::genParentPotential(QRectF myPotential)
         if (sibling == this)
         {
             // Use my potential instead
-            QRectF potDraw = getDrawAsCollision(myPotential);
+            //QRectF potDraw = getDrawAsCollision(myPotential);
+            QRectF potDraw = sceneCollisionToSceneDraw(myPotential);
             tl = parent->mapFromScene(potDraw.topLeft());
             br = parent->mapFromScene(potDraw.bottomRight());
-            canvas->addBlueBound(myPotential);
+            canvas->addBlueBound(potDraw);
             printPt("(potential)tl", tl);
             printPt("(potential)br", br);
         }
@@ -425,10 +426,11 @@ QRectF Node::genParentPotential(QRectF myPotential)
             // Use the sibling's actual scene collision bounds
             //tl = parent->mapFromScene(sibling->getSceneCollisionBox().topLeft());
             //br = parent->mapFromScene(sibling->getSceneCollisionBox().bottomRight());
-            QRectF sceneDraw = getDrawAsCollision(sibling->getSceneCollisionBox());
+            //QRectF sceneDraw = getDrawAsCollision(sibling->getSceneCollisionBox());
+            QRectF sceneDraw = sceneCollisionToSceneDraw(sibling->getSceneCollisionBox());
             tl = parent->mapFromScene(sceneDraw.topLeft());
             br = parent->mapFromScene(sceneDraw.bottomRight());
-            canvas->addGreenBound(sibling->getSceneCollisionBox());
+            canvas->addGreenBound(sceneDraw);
             printPt("tl", tl);
             printPt("br", br);
         }
@@ -449,12 +451,14 @@ QRectF Node::genParentPotential(QRectF myPotential)
 
     // Calculated points are in parent coords
     printMinMax(mix, miy, max, may);
-    QPointF tlp = QPointF(mix, miy);
+    QPointF tlp = QPointF(mix - qreal(GRID_SPACING),
+                          miy - qreal(GRID_SPACING));
     //QPointF brp = QPointF(max + qreal(COLLISION_OFFSET),
                           //may + qreal(COLLISION_OFFSET));
     //QPointF brp = QPointF(max + qreal(GRID_SPACING),
                           //may + qreal(GRID_SPACING));
-    QPointF brp = QPointF(max, may);
+    QPointF brp = QPointF(max + qreal(GRID_SPACING),
+                          may + qreal(GRID_SPACING));
 
     // Convert back to scene
     //QPointF tls = parent->mapToScene(snapPoint(tlp));

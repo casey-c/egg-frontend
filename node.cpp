@@ -434,6 +434,7 @@ QRectF Node::genParentPotential(QRectF myPotential)
     }
 
     // Absolutely disgusting placeholder logic
+    /*
     if (parent->children.size() == 1)
     {
         qreal cw = max - mix;
@@ -448,9 +449,10 @@ QRectF Node::genParentPotential(QRectF myPotential)
         if (miy > 0)
             miy = 0;
     }
+    */
 
     // Calculated points are in parent coords
-    printMinMax(mix, miy, max, may);
+    //printMinMax(mix, miy, max, may);
     QPointF tlp = QPointF(mix - qreal(GRID_SPACING),
                           miy - qreal(GRID_SPACING));
     QPointF brp = QPointF(max + qreal(GRID_SPACING),

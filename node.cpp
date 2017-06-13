@@ -80,7 +80,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     }
     else if ( isCut() )
     {
-        setFlag(ItemIsMovable);
+        //setFlag(ItemIsMovable);
         setFlag(ItemSendsGeometryChanges);
         setCacheMode(DeviceCoordinateCache);
         setAcceptHoverEvents(true);
@@ -131,7 +131,7 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     shadow->setOffset(2);
     this->setGraphicsEffect(shadow);
 
-    setFlag(ItemIsMovable);
+    //setFlag(ItemIsMovable);
     setFlag(ItemSendsGeometryChanges);
     setCacheMode(DeviceCoordinateCache);
     setAcceptHoverEvents(true);
@@ -538,10 +538,12 @@ void Node::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 
 void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << "mouse press";
     mouseOffset = event->pos();
     shadow->setEnabled(true);
     mouseDown = true;
     update();
+    qDebug() << "mouse press post update";
 
     if (event->buttons() & Qt::RightButton)
     {
@@ -559,11 +561,12 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
         canvas->addRedBound(sceneCollisionToSceneDraw(getSceneCollisionBox()));
     }
 
-    QGraphicsObject::mousePressEvent(event);
+    //QGraphicsObject::mousePressEvent(event);
 }
 
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << "Release mouse";
     mouseDown = false;
     shadow->setEnabled(false);
     update();
@@ -573,12 +576,14 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
 void Node::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
+    qDebug() << "Hover enter";
     canvas->setHighlight(this);
     QGraphicsObject::hoverEnterEvent(event);
 }
 
 void Node::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
+    qDebug() << "Hover leave";
     canvas->setHighlight(parent);
     QGraphicsObject::hoverLeaveEvent(event);
 }

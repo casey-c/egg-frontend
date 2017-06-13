@@ -19,6 +19,9 @@ public:
     void addBlueBound(QRectF rect);
     void addGreenBound(QRectF rect);
 
+    void clearDots();
+    void addBlackDot(QPointF pt);
+
 private:
     //////////////
     /// Fields ///
@@ -61,6 +64,8 @@ private:
     QList<QGraphicsRectItem*> blueBounds;
     QList<QGraphicsRectItem*> blackBounds;
     QList<QGraphicsRectItem*> redBounds;
+
+    QList<QGraphicsEllipseItem*> blackDots;
 };
 
 #endif // CANVAS_H

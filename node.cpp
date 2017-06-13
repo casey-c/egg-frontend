@@ -593,11 +593,25 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
     if (mouseDown)
     {
+        canvas->clearDots();
+
         QPointF inMyCoords = event->pos();
         QPointF target = mapToParent(event->pos());
+
+        QPointF scenePt = mapToScene(event->pos());
+        printPt("scene", scenePt);
+        //canvas->addBlackDot(scenePt);
+
         printPt("dragged to", target);
+
+
         printPt("myCoords", inMyCoords);
         printPt("mouseOffset", mouseOffset);
+
+        // offset so we hit the actual pos()
+        target.setX(target.x() - mouseOffset.x());
+        target.setY(target.y() - mouseOffset.y());
+        canvas->addBlackDot(parent->mapToScene(target));
 
         QPointF collisionLess = collisionLessPoint(target);
 
@@ -615,7 +629,10 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         qDebug() << "deltaX" << deltaX;
         qDebug() << "deltaY" << deltaY;
 
-        moveBy(deltaX, deltaY);
+        QRectF rect = getSceneCollisionBox(deltaX, deltaY);
+        canvas->addRedBound(rect);
+
+        //moveBy(deltaX, deltaY);
     }
 }
 

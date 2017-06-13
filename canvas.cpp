@@ -146,6 +146,25 @@ void Canvas::clearBounds()
     redBounds.clear();
 }
 
+void Canvas::clearDots()
+{
+    for (QGraphicsEllipseItem* item : blackDots)
+        scene->removeItem(item);
+
+    blackDots.clear();
+}
+
+void Canvas::addBlackDot(QPointF pt)
+{
+    if (showBounds)
+        blackDots.append(scene->addEllipse(pt.x() - 1,
+                                           pt.y() - 1,
+                                           2,
+                                           2,
+                                           QPen(QColor(0,0,0)),
+                                           QBrush(QColor(0,0,0))));
+}
+
 void Canvas::addRedBound(QRectF rect)
 {
     if(showBounds)

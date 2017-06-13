@@ -594,38 +594,54 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     if (mouseDown)
     {
         canvas->clearDots();
+        canvas->clearBounds();
 
-        QPointF inMyCoords = event->pos();
-        QPointF target = mapToParent(event->pos());
+        //QPointF inMyCoords = event->pos();
 
-        QPointF scenePt = mapToScene(event->pos());
+        //QPointF target = mapToParent(event->pos());
+        printPt("mouseOffset", mouseOffset);
+
+        printPt("unmapped event", event->pos());
+
+        QPointF adj = QPointF(event->pos().x() - mouseOffset.x(),
+                              event->pos().y() - mouseOffset.y());
+        printPt("adjusted", adj);
+
+        QPointF snapped = snapPoint(adj);
+        printPt("snapped", snapped);
+
+        QPointF scenePt = mapToScene( snapped );
         printPt("scene", scenePt);
         //canvas->addBlackDot(scenePt);
 
-        printPt("dragged to", target);
+        //printPt("dragged to", target);
 
 
-        printPt("myCoords", inMyCoords);
-        printPt("mouseOffset", mouseOffset);
+        //printPt("myCoords", inMyCoords);
+        //printPt("mouseOffset", mouseOffset);
 
         // offset so we hit the actual pos()
-        target.setX(target.x() - mouseOffset.x());
-        target.setY(target.y() - mouseOffset.y());
-        canvas->addBlackDot(parent->mapToScene(target));
+        //target.setX(target.x() - mouseOffset.x());
+        //target.setY(target.y() - mouseOffset.y());
+        canvas->addBlackDot(scenePt);
 
-        QPointF collisionLess = collisionLessPoint(target);
+        //QPointF collisionLess = collisionLessPoint(target);
 
-        if ( collisionLess.x() == pos().x() &&
-             collisionLess.y() == pos().y()   )
-        {
-            qDebug() << "No movement";
-            return;
-        }
+        //if ( collisionLess.x() == pos().x() &&
+             //collisionLess.y() == pos().y()   )
+        //{
+            //qDebug() << "No movement";
+            //return;
+        //}
 
-        printPt("original pos", pos());
-        printPt("collisionLess", collisionLess);
-        qreal deltaX = collisionLess.x() - pos().x() - mouseOffset.x();
-        qreal deltaY = collisionLess.y() - pos().y() - mouseOffset.y();
+        //printPt("original pos", pos());
+        //printPt("collisionLess", collisionLess);
+        //qreal deltaX = collisionLess.x() - pos().x() - mouseOffset.x();
+        //qreal deltaY = collisionLess.y() - pos().y() - mouseOffset.y();
+
+        qreal deltaX = scenePt.x() - scenePos().x();
+        qreal deltaY = scenePt.y() - scenePos().y();
+
         qDebug() << "deltaX" << deltaX;
         qDebug() << "deltaY" << deltaY;
 

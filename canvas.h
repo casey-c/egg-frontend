@@ -17,6 +17,7 @@ public:
     void addRedBound(QRectF rect);
     void addBlackBound(QRectF rect);
     void addBlueBound(QRectF rect);
+    void addGreenBound(QRectF rect);
 
 private:
     //////////////
@@ -42,6 +43,8 @@ private:
 
     // Add
     void addCut();
+    void addStatement(QString s);
+    void addPlaceholder();
 
     // Highlight
     void highlightRoot();

@@ -44,8 +44,6 @@ public:
     Node* getLeftSibling();
     Node* getChild();
 
-    //QRectF getChildBoxInScene() const;
-
 private:
 
     //////////////
@@ -78,17 +76,19 @@ private:
     // Children
     QList<Node*> children;
     qreal minX, minY, maxX, maxY;
-    //QRectF childBox;
 
     // New Important Points & Rects
     qreal width, height; // in absolute pixels (a multiple of GRID_SPACING)
-
     QRectF drawBox; // size of everything that gets drawn by this node
 
-    QRectF scenePotentialBounds; // in scene coords
-    QuantumBool hasDifferentPotentialBounds; // mid movement
-
     void setDrawBoxFromPotential(QRectF potential);
+
+    QRectF genParentPotential(QRectF myPotential);
+
+    QString letter;
+    QFont font;
+
+    QRectF sceneCollisionToSceneDraw(QRectF rect);
 
     ///////////////
     /// Methods ///
@@ -96,13 +96,11 @@ private:
 
     // Private constructor
     Node(Canvas* can, Node* par, NodeType t, QPointF pt);
+    Node(Canvas* can, Node* par, QString s, QPointF pt);
 
     // Graphics
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
-    //QRectF getCollisionRect() const;
-    //void updateCollisionBox(); //set the collisionBox
-
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
@@ -116,22 +114,7 @@ private:
     bool rectAvoidsCollision(QRectF rect) const;
 
     QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
-    //QRectF getSceneCollisionBox() const;
-    //QRectF getTranslatedSceneCollisionRect(qreal delX, qreal delY) const;
-
-    //void calculateChildBox();
-    //void resizeToFitChildBox();
-
-    void updateChildMinMax();
-
-    QRectF getPotentialSceneCollision(qreal deltaX, qreal deltaY) const;
-
-    //QRectF getTranslatedDrawBox(qreal deltaX, qreal deltaY) const;
     QRectF getDrawAsCollision(const QRectF &draw) const;
-    //QRectF rectToScene(const QRectF &rect) const;
-
-
-    //QRectF convertTempCollisionToDrawBox();
 
     // Mouse
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;

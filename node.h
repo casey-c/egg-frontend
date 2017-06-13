@@ -122,6 +122,7 @@ private:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
 };
 
 #endif // NODE_H

@@ -276,7 +276,8 @@ QVariant Node::itemChange(GraphicsItemChange change,
                           const QVariant &value)
 {
     if ( change == ItemPositionChange && scene() )
-        return collisionLessPoint(value.toPointF());
+        //return collisionLessPoint(value.toPointF());
+        qDebug() << "successful move";
 
     return QGraphicsItem::itemChange(change, value);
 }
@@ -586,6 +587,36 @@ void Node::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
     qDebug() << "Hover leave";
     canvas->setHighlight(parent);
     QGraphicsObject::hoverLeaveEvent(event);
+}
+
+void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
+{
+    if (mouseDown)
+    {
+        QPointF inMyCoords = event->pos();
+        QPointF target = mapToParent(event->pos());
+        printPt("dragged to", target);
+        printPt("myCoords", inMyCoords);
+        printPt("mouseOffset", mouseOffset);
+
+        QPointF collisionLess = collisionLessPoint(target);
+
+        if ( collisionLess.x() == pos().x() &&
+             collisionLess.y() == pos().y()   )
+        {
+            qDebug() << "No movement";
+            return;
+        }
+
+        printPt("original pos", pos());
+        printPt("collisionLess", collisionLess);
+        qreal deltaX = collisionLess.x() - pos().x() - mouseOffset.x();
+        qreal deltaY = collisionLess.y() - pos().y() - mouseOffset.y();
+        qDebug() << "deltaX" << deltaX;
+        qDebug() << "deltaY" << deltaY;
+
+        moveBy(deltaX, deltaY);
+    }
 }
 
 /// New ///

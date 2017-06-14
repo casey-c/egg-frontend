@@ -25,6 +25,7 @@ bool rectsCollide(const QRectF &a, const QRectF &b);
 void printPt(const QString &s, const QPointF &pt);
 void printRect(const QString &s, const QRectF &r);
 void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
+QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget);
 
 // Helper struct
 struct NodePotential
@@ -596,57 +597,40 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         canvas->clearDots();
         canvas->clearBounds();
 
-        //QPointF inMyCoords = event->pos();
-
-        //QPointF target = mapToParent(event->pos());
-        printPt("mouseOffset", mouseOffset);
-
-        printPt("unmapped event", event->pos());
-
         QPointF adj = QPointF(event->pos().x() - mouseOffset.x(),
                               event->pos().y() - mouseOffset.y());
-        printPt("adjusted", adj);
+        //printPt("adjusted", adj);
 
-        QPointF snapped = snapPoint(adj);
-        printPt("snapped", snapped);
+        QList<QPointF> bloom = constructBloom(scenePos(), mapToScene(adj));
+        if (bloom.empty())
+        {
+            qDebug() << "Nothing in bloom, i.e. no movement.";
+        }
 
-        QPointF scenePt = mapToScene( snapped );
-        printPt("scene", scenePt);
+        for (QPointF pt : bloom)
+        {
+            printPt("bloompt", pt);
+            canvas->addBlackDot(pt);
+
+            qreal deltaX = pt.x() - scenePos().x();
+            qreal deltaY = pt.y() - scenePos().y();
+
+            QRectF rect = getSceneCollisionBox(deltaX, deltaY);
+            canvas->addRedBound(rect);
+        }
+
+        //QPointF scenePt = mapToScene( snapPoint(adj) );
+        //printPt("scene", scenePt);
         //canvas->addBlackDot(scenePt);
 
-        //printPt("dragged to", target);
+        //qreal deltaX = scenePt.x() - scenePos().x();
+        //qreal deltaY = scenePt.y() - scenePos().y();
 
+        //qDebug() << "deltaX" << deltaX;
+        //qDebug() << "deltaY" << deltaY;
 
-        //printPt("myCoords", inMyCoords);
-        //printPt("mouseOffset", mouseOffset);
-
-        // offset so we hit the actual pos()
-        //target.setX(target.x() - mouseOffset.x());
-        //target.setY(target.y() - mouseOffset.y());
-        canvas->addBlackDot(scenePt);
-
-        //QPointF collisionLess = collisionLessPoint(target);
-
-        //if ( collisionLess.x() == pos().x() &&
-             //collisionLess.y() == pos().y()   )
-        //{
-            //qDebug() << "No movement";
-            //return;
-        //}
-
-        //printPt("original pos", pos());
-        //printPt("collisionLess", collisionLess);
-        //qreal deltaX = collisionLess.x() - pos().x() - mouseOffset.x();
-        //qreal deltaY = collisionLess.y() - pos().y() - mouseOffset.y();
-
-        qreal deltaX = scenePt.x() - scenePos().x();
-        qreal deltaY = scenePt.y() - scenePos().y();
-
-        qDebug() << "deltaX" << deltaX;
-        qDebug() << "deltaY" << deltaY;
-
-        QRectF rect = getSceneCollisionBox(deltaX, deltaY);
-        canvas->addRedBound(rect);
+        //QRectF rect = getSceneCollisionBox(deltaX, deltaY);
+        //canvas->addRedBound(rect);
 
         //moveBy(deltaX, deltaY);
     }
@@ -773,6 +757,43 @@ void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY)
              << ","
              << maxY
              << ")";
+}
+
+/*
+ * scenePos: original / old position of the drawBox topleft point
+ * sceneTarget: where the pos might move to (not yet snapped to grid)
+ *
+ * Note: both pos and target should be in scene coords
+ *
+ * Returns a list of "bloomed" potential points: basically giving the user a
+ * little leeway in their target movement near collision boundaries. These
+ * points are sorted such that the snapped target is first, but if that fails,
+ * the rest of the bloomed points can be checked in a closest-to-original-pos
+ * ordering.
+ *
+ * If the snapPoint is the same as the original pos, this function will return
+ * an empty list (no movement).
+ */
+QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget)
+{
+    QPointF snapped = snapPoint(sceneTarget);
+
+    QList<QPointF> bloom;
+
+    if (snapped.x() == scenePos.x() && snapped.y() == scenePos.y())
+        return bloom;
+
+    bloom.append(QPointF(snapped.x() - qreal(GRID_SPACING), snapped.y()));
+    bloom.append(QPointF(snapped.x(), snapped.y() - qreal(GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y()));
+    bloom.append(QPointF(snapped.x(), snapped.y() + qreal(GRID_SPACING)));
+
+    std::sort(bloom.begin(), bloom.end(),
+              [scenePos](const QPointF a, const QPointF b) ->
+              bool { return dist(a, scenePos) < dist(b, scenePos); });
+
+    bloom.prepend(snapped);
+    return bloom;
 }
 
 

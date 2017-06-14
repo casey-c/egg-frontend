@@ -84,11 +84,12 @@ private:
     void setDrawBoxFromPotential(QRectF potential);
 
     QRectF genParentPotential(QRectF myPotential);
+    QRectF predictParent(QRectF myPotDraw);
 
     QString letter;
     QFont font;
 
-    QRectF sceneCollisionToSceneDraw(QRectF rect);
+    QRectF sceneCollisionToSceneDraw(QRectF rect) const;
 
     ///////////////
     /// Methods ///
@@ -114,7 +115,10 @@ private:
     bool rectAvoidsCollision(QRectF rect) const;
 
     QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
+    QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
     QRectF getDrawAsCollision(const QRectF &draw) const;
+
+    bool checkPotential(QPointF pt);
 
     // Mouse
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;

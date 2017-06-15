@@ -615,23 +615,19 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
         for (QPointF pt : bloom)
         {
-            //printPt("bloompt", pt);
-            canvas->addBlackDot(pt);
-
-            qreal deltaX = pt.x() - scenePos().x();
-            qreal deltaY = pt.y() - scenePos().y();
-
-            QRectF rect = getSceneCollisionBox(deltaX, deltaY);
-            canvas->addRedBound(rect);
-
-            QRectF potDraw = sceneCollisionToSceneDraw(rect);
-            canvas->addBlueBound(potDraw);
-
             // Check collision
             if (checkPotential(pt))
             {
                 // Found our man
                 qDebug() << "Found a point that works!";
+                qreal deltaX = pt.x() - scenePos().x();
+                qreal deltaY = pt.y() - scenePos().y();
+                canvas->addBlackDot(pt);
+                QRectF rect = getSceneCollisionBox(deltaX, deltaY);
+                canvas->addRedBound(rect);
+
+                QRectF potDraw = sceneCollisionToSceneDraw(rect);
+                canvas->addBlueBound(potDraw);
                 //moveBy(deltaX, deltaY);
                 return;
             }
@@ -655,11 +651,16 @@ QRectF Node::sceneCollisionToSceneDraw(QRectF rect) const
 }
 
 /*
- * Returns a (scene-mapped) drawBox for my parent, based on my potential draw
- * (which is also scene-mapped)
+ * Takes in a potential drawBox and returns a potential collision box for the
+ * parent if the drawBox got updated
  */
 QRectF Node::predictParent(QRectF myPotDraw)
 {
+    if (parent == nullptr)
+    {
+        throw std::runtime_error("ERROR: predictParent nullptr parent");
+    }
+
     qreal minX, minY, maxX, maxY;
     minX = minY = BIG_NUMBER;
     maxX = maxY = -BIG_NUMBER;
@@ -857,38 +858,44 @@ bool Node::checkPotential(QPointF pt)
     QList<QRectF> potDraws;
 
     Node* curr = this;
-    Node* par = parent;
-
-    QRectF currPot = getSceneDraw(pt.x() - scenePos().x(),
-                                  pt.y() - scenePos().y());
-
-    qDebug() << "start while";
-    while (!par->isRoot())
+    QRectF currPot = getSceneCollisionBox(pt.x() - scenePos().x(),
+                                          pt.y() - scenePos().y());
+    canvas->addRedBound(currPot);
+    while(true)
     {
-        qDebug() << "in while";
-        QRectF parPot = curr->predictParent(currPot); //scene drawBox
-        QRectF potColl = getDrawAsCollision(parPot);
+        if (curr->isRoot())
+            break;
 
-        // TODO: check if parPot == parent's existing drawBox (i.e. no changes)
-
-        for (Node* n : par->parent->children)
+        // Check currPot against other siblings
+        for (Node* sibling : curr->parent->children)
         {
-            if (n == par)
+            if (sibling == curr)
                 continue;
-            if (rectsCollide(potColl, n->getSceneCollisionBox()))
+
+            if (rectsCollide(currPot, sibling->getSceneCollisionBox()))
                 return false;
         }
 
-        // No collision
-        nodes.append(par);
-        potDraws.append(parPot);
+        // Store data in case everything succeeds
+        nodes.append(curr);
+        potDraws.append(sceneCollisionToSceneDraw(currPot));
+
+        canvas->addGreenBound(potDraws.last());
+
+        // Construct the next potential
+        if (curr->parent->isRoot())
+        {
+            qDebug() << "parent is root";
+            break;
+        }
+        currPot = curr->predictParent(potDraws.last());
+        canvas->addBlackBound(currPot);
 
         // Percolate up
         curr = curr->parent;
-        parent = parent->parent;
-        currPot = parPot;
     }
-    qDebug() << "end while";
+
+    return true;
 
     // Update all the nodes
     qDebug() << "No collision all the way up the tree!";
@@ -896,9 +903,18 @@ bool Node::checkPotential(QPointF pt)
     QList<QRectF>::iterator it2 = potDraws.begin();
     while (it1 != nodes.end() && it2 != potDraws.end())
     {
-        //Node* n = (*it1);
-        //QRectF r = (*it2);
-        (*it1)->setDrawBoxFromPotential((*it2));
+        Node* n = (*it1);
+        QRectF r = (*it2);
+
+        canvas->addBlueBound(r);
+
+        QRectF mapped(n->mapFromScene(r.topLeft()),
+                      n->mapFromScene(r.bottomRight()));
+        printRect("mapped", mapped);
+
+        n->setDrawBoxFromPotential(QRectF(n->mapFromScene(r.topLeft()),
+                                          n->mapFromScene(r.bottomRight())));
+        //(*it1)->setDrawBoxFromPotential((*it2));
 
         ++it1;
         ++it2;
@@ -906,6 +922,28 @@ bool Node::checkPotential(QPointF pt)
 
     return true;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

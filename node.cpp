@@ -185,9 +185,10 @@ void Node::setDrawBoxFromPotential(QRectF potential)
 {
     prepareGeometryChange();
 
-    QRectF sceneDraw = sceneCollisionToSceneDraw(potential);
-    drawBox = QRectF(mapFromScene(sceneDraw.topLeft()),
-                     mapFromScene(sceneDraw.bottomRight()));
+    //QRectF sceneDraw = sceneCollisionToSceneDraw(potential);
+    //drawBox = QRectF(mapFromScene(sceneDraw.topLeft()),
+                     //mapFromScene(sceneDraw.bottomRight()));
+    drawBox = potential;
 }
 
 /////////////////
@@ -628,7 +629,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
                 QRectF potDraw = sceneCollisionToSceneDraw(rect);
                 canvas->addBlueBound(potDraw);
-                //moveBy(deltaX, deltaY);
+                moveBy(deltaX, deltaY);
                 return;
             }
         }
@@ -877,8 +878,8 @@ bool Node::checkPotential(QPointF pt)
         }
 
         // Store data in case everything succeeds
-        nodes.append(curr);
-        potDraws.append(sceneCollisionToSceneDraw(currPot));
+        nodes.prepend(curr);
+        potDraws.prepend(sceneCollisionToSceneDraw(currPot));
 
         canvas->addGreenBound(potDraws.last());
 
@@ -888,21 +889,28 @@ bool Node::checkPotential(QPointF pt)
             qDebug() << "parent is root";
             break;
         }
-        currPot = curr->predictParent(potDraws.last());
+        currPot = curr->predictParent(potDraws.first());
         canvas->addBlackBound(currPot);
+
+        // TODO: check if next pot is equiv to its existing drawBox (to quit
+        // early and save computation)
 
         // Percolate up
         curr = curr->parent;
     }
 
-    return true;
+    //return true;
 
     // Update all the nodes
+    nodes.pop_back();
+    potDraws.pop_back();
+
     qDebug() << "No collision all the way up the tree!";
     QList<Node*>::iterator it1 = nodes.begin();
     QList<QRectF>::iterator it2 = potDraws.begin();
     while (it1 != nodes.end() && it2 != potDraws.end())
     {
+        //qDebug() << "updating node";
         Node* n = (*it1);
         QRectF r = (*it2);
 

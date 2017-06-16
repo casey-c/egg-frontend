@@ -5,7 +5,7 @@
 
 Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent),
-    showBounds(true)
+    showBounds(false)
 {
     scene = new QGraphicsScene(this);
     scene->setItemIndexMethod(QGraphicsScene::NoIndex);

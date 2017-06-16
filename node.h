@@ -91,6 +91,9 @@ private:
 
     QRectF sceneCollisionToSceneDraw(QRectF rect) const;
 
+    QRectF toDraw(QRectF collision) const;
+    QRectF toCollision(QRectF draw) const;
+
     ///////////////
     /// Methods ///
     ///////////////

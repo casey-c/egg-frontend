@@ -690,7 +690,7 @@ QRectF Node::predictParent(QRectF myPotDraw)
             maxY = br.y();
     }
 
-    // Calculated points are in parent coords
+    // Calculated points are a draw box in parent coords
     QPointF tlp = QPointF(minX - qreal(GRID_SPACING),
                           minY - qreal(GRID_SPACING));
     QPointF brp = QPointF(maxX + qreal(GRID_SPACING),
@@ -699,7 +699,7 @@ QRectF Node::predictParent(QRectF myPotDraw)
     // Convert back to scene
     QPointF tls = parent->mapToScene(tlp);
     QPointF brs = parent->mapToScene(brp);
-    return QRectF(tls, brs);
+    return toCollision(QRectF(tls, brs));
 }
 
 ///////////////
@@ -812,6 +812,21 @@ void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY)
              << ")";
 }
 
+QRectF Node::toCollision(QRectF draw) const
+{
+    return QRectF( QPointF(draw.topLeft().x() - qreal(COLLISION_OFFSET),
+                           draw.topLeft().y() - qreal(COLLISION_OFFSET)),
+                   QPointF(draw.bottomRight().x() + qreal(COLLISION_OFFSET),
+                           draw.bottomRight().y() + qreal(COLLISION_OFFSET)));
+}
+
+QRectF Node::toDraw(QRectF coll) const
+{
+    return QRectF( QPointF(coll.topLeft().x() + qreal(COLLISION_OFFSET),
+                           coll.topLeft().y() + qreal(COLLISION_OFFSET)),
+                   QPointF(coll.bottomRight().x() - qreal(COLLISION_OFFSET),
+                           coll.bottomRight().y() - qreal(COLLISION_OFFSET)));
+}
 /*
  * scenePos: original / old position of the drawBox topleft point
  * sceneTarget: where the pos might move to (not yet snapped to grid)
@@ -879,7 +894,8 @@ bool Node::checkPotential(QPointF pt)
 
         // Store data in case everything succeeds
         nodes.prepend(curr);
-        potDraws.prepend(sceneCollisionToSceneDraw(currPot));
+        potDraws.prepend(toDraw(currPot));
+        //potDraws.prepend(sceneCollisionToSceneDraw(currPot));
 
         canvas->addGreenBound(potDraws.last());
 

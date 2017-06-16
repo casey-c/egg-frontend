@@ -69,6 +69,8 @@ private:
     QRadialGradient gradHighlighted;
     QRadialGradient gradClicked;
 
+    QRadialGradient gradSelected;
+
     QGraphicsDropShadowEffect* shadow;
 
     // Important points
@@ -81,6 +83,9 @@ private:
     QString letter;
     QFont font;
 
+    // Selection
+    bool selected;
+
     ///////////////
     /// Methods ///
     ///////////////
@@ -88,6 +93,11 @@ private:
     // Private constructor
     Node(Canvas* can, Node* par, NodeType t, QPointF pt);
     Node(Canvas* can, Node* par, QString s, QPointF pt);
+
+    // Selection
+    void selectThis();
+    void deselectThis();
+    void toggleSelection();
 
     // Graphics
     QRectF boundingRect() const override;

@@ -59,7 +59,8 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     type(t),
     highlighted(false),
     mouseDown(false),
-    mouseOffset(0, 0)
+    mouseOffset(0, 0),
+    selected(false)
 {
     // Drop shadow on click and drag
     shadow = new QGraphicsDropShadowEffect(this);
@@ -102,6 +103,12 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
     gradClicked.setColorAt(0, QColor(210, 210, 210));
     gradClicked.setColorAt(1, QColor(240, 240, 240));
+
+    gradSelected = QRadialGradient( drawBox.x() + 3,
+                                    drawBox.y() + 3,
+                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    gradSelected.setColorAt(0, QColor(110, 226, 218));
+    gradSelected.setColorAt(1, QColor(0, 209, 140));
 }
 
 /* Statement constructor */
@@ -112,7 +119,8 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     highlighted(false),
     mouseDown(false),
     mouseOffset(0, 0),
-    letter(s)
+    letter(s),
+    selected(false)
 {
     shadow = new QGraphicsDropShadowEffect(this);
     shadow->setEnabled(false);
@@ -145,6 +153,12 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
     gradClicked.setColorAt(0, QColor(210, 210, 210));
     gradClicked.setColorAt(1, QColor(240, 240, 240));
+
+    gradSelected = QRadialGradient( drawBox.x() + 3,
+                                    drawBox.y() + 3,
+                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    gradSelected.setColorAt(0, QColor(110, 226, 218));
+    gradSelected.setColorAt(1, QColor(0, 209, 140));
 
     font = QFont();
     font.setPixelSize(GRID_SPACING * 2 - 6);
@@ -191,6 +205,38 @@ void Node::removeHighlight()
     update();
 }
 
+/////////////////
+/// Selection ///
+/////////////////
+
+/*
+ * Select this node
+ */
+void Node::selectThis()
+{
+    selected = true;
+    update();
+}
+
+/*
+ * Deselect this node
+ */
+void Node::deselectThis()
+{
+    selected = false;
+    update();
+}
+
+/*
+ * Inverts whether this is selected or not
+ */
+void Node::toggleSelection()
+{
+    selected = !selected;
+    update();
+}
+
+
 ////////////////
 /// Graphics ///
 ////////////////
@@ -220,12 +266,17 @@ void Node::paint(QPainter* painter,
     if (isStatement())
         painter->setPen(QPen(QColor(0,0,0,0)));
 
-    if (mouseDown)
-        painter->setBrush(QBrush(gradClicked));
-    else if (highlighted)
-        painter->setBrush(QBrush(gradHighlighted));
+    if (selected)
+        painter->setBrush(QBrush(gradSelected));
     else
-        painter->setBrush(QBrush(gradDefault));
+    {
+        if (mouseDown)
+            painter->setBrush(QBrush(gradClicked));
+        else if (highlighted)
+            painter->setBrush(QBrush(gradHighlighted));
+        else
+            painter->setBrush(QBrush(gradDefault));
+    }
 
     painter->drawRoundedRect(drawBox, qreal(BORDER_RADIUS), qreal(BORDER_RADIUS));
 
@@ -411,13 +462,15 @@ void Node::setDrawBoxFromPotential(QRectF potential)
 
 void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
-    mouseOffset = event->pos();
-    shadow->setEnabled(true);
-    mouseDown = true;
-    update();
-
-    if (event->buttons() & Qt::RightButton)
-        qDebug() << "Right click";
+    if (event->buttons() & Qt::LeftButton)
+    {
+        mouseOffset = event->pos();
+        shadow->setEnabled(true);
+        mouseDown = true;
+        update();
+    }
+    else if (event->buttons() & Qt::RightButton)
+        toggleSelection();
 }
 
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
@@ -447,25 +500,28 @@ void Node::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
  */
 void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    // Adjusted with the mouseOffset, so that we are standardizing
-    // calculations against the upper left corner
-    QPointF adj = QPointF(event->pos().x() - mouseOffset.x(),
-                          event->pos().y() - mouseOffset.y());
-
-    // Construct potential points to check collision against
-    QList<QPointF> bloom = constructBloom(scenePos(), mapToScene(adj));
-
-    if (bloom.empty())
-        return;
-
-    for (QPointF pt : bloom)
+    if (mouseDown)
     {
-        if (checkPotential(pt))
-        {
-            // Found an okay point, so make the move
-            moveBy(pt.x() - scenePos().x(),
-                   pt.y() - scenePos().y());
+        // Adjusted with the mouseOffset, so that we are standardizing
+        // calculations against the upper left corner
+        QPointF adj = QPointF(event->pos().x() - mouseOffset.x(),
+                              event->pos().y() - mouseOffset.y());
+
+        // Construct potential points to check collision against
+        QList<QPointF> bloom = constructBloom(scenePos(), mapToScene(adj));
+
+        if (bloom.empty())
             return;
+
+        for (QPointF pt : bloom)
+        {
+            if (checkPotential(pt))
+            {
+                // Found an okay point, so make the move
+                moveBy(pt.x() - scenePos().x(),
+                       pt.y() - scenePos().y());
+                return;
+            }
         }
     }
 }

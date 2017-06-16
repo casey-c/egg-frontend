@@ -60,6 +60,8 @@ private:
     NodeType type;
     QString text;
 
+    QRectF drawBox;
+
     bool highlighted;
     bool mouseDown;
 
@@ -70,25 +72,14 @@ private:
     QGraphicsDropShadowEffect* shadow;
 
     // Important points
-    QPointF lastHoverPos;
     QPointF mouseOffset;
 
     // Children
     QList<Node*> children;
-    qreal minX, minY, maxX, maxY;
 
-    // New Important Points & Rects
-    qreal width, height; // in absolute pixels (a multiple of GRID_SPACING)
-    QRectF drawBox; // size of everything that gets drawn by this node
-
-    void setDrawBoxFromPotential(QRectF potential);
-
-    QRectF genParentPotential(QRectF myPotential);
-
+    // Statement specific details
     QString letter;
     QFont font;
-
-    QRectF sceneCollisionToSceneDraw(QRectF rect);
 
     ///////////////
     /// Methods ///
@@ -106,22 +97,23 @@ private:
                const QStyleOptionGraphicsItem* option,
                QWidget* widget) override;
 
-    // Moving
-    QVariant itemChange(GraphicsItemChange change,
-                        const QVariant &value) override;
-
-    QPointF collisionLessPoint(QPointF val);
-    bool rectAvoidsCollision(QRectF rect) const;
-
+    // Sizing
+    QRectF toCollision(QRectF draw) const;
+    QRectF toDraw(QRectF collision) const;
     QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
-    QRectF getDrawAsCollision(const QRectF &draw) const;
+    QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
+
+    // Collision Checking
+    bool checkPotential(QPointF pt);
+    QRectF predictParent(QRectF myPotDraw);
+    void setDrawBoxFromPotential(QRectF potential);
 
     // Mouse
-    void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
 };
 
 #endif // NODE_H

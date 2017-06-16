@@ -25,6 +25,7 @@ bool rectsCollide(const QRectF &a, const QRectF &b);
 void printPt(const QString &s, const QPointF &pt);
 void printRect(const QString &s, const QRectF &r);
 void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
+QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget);
 
 // Helper struct
 struct NodePotential
@@ -58,14 +59,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     type(t),
     highlighted(false),
     mouseDown(false),
-    lastHoverPos(0, 0),
-    mouseOffset(0, 0),
-    minX(0),
-    minY(0),
-    maxX(0),
-    maxY(0),
-    width(0),
-    height(0)
+    mouseOffset(0, 0)
 {
     // Drop shadow on click and drag
     shadow = new QGraphicsDropShadowEffect(this);
@@ -80,13 +74,13 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     }
     else if ( isCut() )
     {
-        setFlag(ItemIsMovable);
+        //setFlag(ItemIsMovable);
         setFlag(ItemSendsGeometryChanges);
         setCacheMode(DeviceCoordinateCache);
         setAcceptHoverEvents(true);
 
-        width = height = qreal(EMPTY_CUT_SIZE);
-        drawBox = QRectF( QPointF(0, 0), QPointF(width, height) );
+        drawBox = QRectF( QPointF(0, 0), QPointF(qreal(EMPTY_CUT_SIZE),
+                                                 qreal(EMPTY_CUT_SIZE)) );
         setPos(snapPoint(pt));
     }
 
@@ -94,8 +88,6 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     gradDefault = QRadialGradient( drawBox.x() + 3,
                                    drawBox.y() + 3,
                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    //gradDefault.setColorAt(0, QColor(225, 225, 225));
-    //gradDefault.setColorAt(1, QColor(185, 185, 185));
     gradDefault.setColorAt(0, QColor(249, 249, 249));
     gradDefault.setColorAt(1, QColor(249, 249, 249));
 
@@ -119,10 +111,7 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     type(Statement),
     highlighted(false),
     mouseDown(false),
-    lastHoverPos(0, 0),
     mouseOffset(0, 0),
-    width(0),
-    height(0),
     letter(s)
 {
     shadow = new QGraphicsDropShadowEffect(this);
@@ -131,13 +120,12 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     shadow->setOffset(2);
     this->setGraphicsEffect(shadow);
 
-    setFlag(ItemIsMovable);
     setFlag(ItemSendsGeometryChanges);
     setCacheMode(DeviceCoordinateCache);
     setAcceptHoverEvents(true);
 
-    width = height = qreal(STATEMENT_SIZE);
-    drawBox = QRectF( QPointF(0, 0), QPointF(width, height));
+    drawBox = QRectF( QPointF(0, 0), QPointF(qreal(STATEMENT_SIZE),
+                                             qreal(STATEMENT_SIZE)));
     setPos(snapPoint(pt));
 
     gradDefault = QRadialGradient( drawBox.x() + 3,
@@ -180,14 +168,6 @@ Node* Node::addChildStatement(QPointF pt, QString t)
     return newChild;
 }
 
-void Node::setDrawBoxFromPotential(QRectF potential)
-{
-    prepareGeometryChange();
-
-    QRectF sceneDraw = sceneCollisionToSceneDraw(potential);
-    drawBox = QRectF(mapFromScene(sceneDraw.topLeft()),
-                     mapFromScene(sceneDraw.bottomRight()));
-}
 
 /////////////////
 /// Highlight ///
@@ -223,15 +203,10 @@ QRectF Node::boundingRect() const
 QPainterPath Node::shape() const
 {
     QPainterPath path;
-    path.addRect( getDrawAsCollision(drawBox) );
+    path.addRect(toCollision(drawBox));
     return path;
 }
 
-/*
- * Override QGraphicsObject::paint
- *
- * Paint the Node itself.
- */
 void Node::paint(QPainter* painter,
                  const QStyleOptionGraphicsItem* option,
                  QWidget* widget)
@@ -263,278 +238,176 @@ void Node::paint(QPainter* painter,
 }
 
 //////////////
-/// Moving ///
+/// Sizing ///
 //////////////
 
 /*
- * Override QGraphicsObject::itemChange
- *
- * Control the behavior of the default item movement supplied by the
- * ItemIsMovable flag.
+ * Converts the passed in QRectF (which should be a drawBox) to a collision box
  */
-QVariant Node::itemChange(GraphicsItemChange change,
-                          const QVariant &value)
+QRectF Node::toCollision(QRectF draw) const
 {
-    if ( change == ItemPositionChange && scene() )
-        return collisionLessPoint(value.toPointF());
-
-    return QGraphicsItem::itemChange(change, value);
+    return QRectF( QPointF(draw.topLeft().x() - qreal(COLLISION_OFFSET),
+                           draw.topLeft().y() - qreal(COLLISION_OFFSET)),
+                   QPointF(draw.bottomRight().x() + qreal(COLLISION_OFFSET),
+                           draw.bottomRight().y() + qreal(COLLISION_OFFSET)));
 }
 
 /*
- * Returns a grid-aligned point close to val such that if the Node were to move
- * there, no collision would occur. In other words, take the point val and try
- * and find a snapped point that wouldn't cause a collision.
- *
- * This function uses a "bloom" technique that searches an extra four snapped
- * points in the cardinal directions away from the snapped node. This allows for
- * fuzzier detection of where the user wanted to move, making it less
- * frustrating to move a node near other potentially colliding nodes.
- *
- * If no point is found, pos() is returned, as it will result in no movement
- * whatsoever.
+ * Converts the passed in QRectF (which should be a collision box) to a drawBox
  */
-QPointF Node::collisionLessPoint(QPointF val)
+QRectF Node::toDraw(QRectF coll) const
 {
-    // Put val onto the snapping grid
-    QPointF snapped = snapPoint(val);
-
-    // No movement, so no need to check updated collision
-    if ( snapped.x() - pos().x() == 0 &&
-         snapped.y() - pos().y() == 0 )
-        return pos();
-
-    // Build up a "bloom" of potential points to check
-    QList<QPointF> potentialPts;
-    potentialPts.append(QPointF(snapped.x() - qreal(GRID_SPACING), snapped.y()));
-    potentialPts.append(QPointF(snapped.x(), snapped.y() - qreal(GRID_SPACING)));
-    potentialPts.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y()));
-    potentialPts.append(QPointF(snapped.x(), snapped.y() + qreal(GRID_SPACING)));
-
-    // Sort by distance, so we search for the closest first
-    std::sort(potentialPts.begin(), potentialPts.end(),
-          [this](const QPointF a, const QPointF b) ->
-          bool { return dist(a, this->pos()) < dist(b, this->pos()); });
-
-    // Always check the target before any bloomed points
-    potentialPts.prepend(snapped);
-
-    // Check all these points to see if they would cause a collision
-    for ( QPointF pt : potentialPts )
-    {
-        QRectF rect = getSceneCollisionBox(pt.x() - pos().x(),
-                                           pt.y() - pos().y());
-
-        // No collision with direct siblings
-        if ( rectAvoidsCollision(rect) )
-        {
-            canvas->clearBounds();
-
-            bool avoidedCollision = true;
-
-            QList<NodePotential*> nodesToUpdate;
-
-            Node* p = parent;
-            Node* c = this;
-            QRectF cPotRect = rect;
-
-            while (!p->isRoot())
-            {
-                // Parent potential rect is in scene coords
-                QRectF pPotRect = c->genParentPotential(cPotRect);
-
-                // Check if parent potential rect collides with anything
-                for (Node* n : p->parent->children)
-                {
-                    if (n == p)
-                        continue;
-                    if (rectsCollide(pPotRect, n->getSceneCollisionBox()))
-                    {
-                        avoidedCollision = false;
-                        break;
-                    }
-                }
-
-                if (!avoidedCollision)
-                    break;
-
-                // No collisions at this level, so store this info to update
-                // later if the percolation succeeds
-                NodePotential* np = new NodePotential;
-                np->node = p;
-                np->rect = pPotRect;
-                //np->rect = QRectF(p->mapFromScene(pPotRect.topLeft()),
-                                  //p->mapFromScene(pPotRect.bottomRight()));
-                nodesToUpdate.append(np);
-
-                // Percolate up
-                c = c->parent;
-                p = p->parent;
-                cPotRect = pPotRect;
-            }
-
-            // A collision occured up in the percolation: clean up allocation
-            if (!avoidedCollision)
-            {
-                for (NodePotential* np : nodesToUpdate)
-                    delete np;
-                continue; // check the next potential pt
-            }
-
-            // Everything's ok: update the drawBoxes to the saved potentials
-            for (NodePotential* np : nodesToUpdate)
-            {
-                np->node->setDrawBoxFromPotential(np->rect);
-                delete np;
-            }
-
-            // And perform the move
-            return pt;
-        }
-    }
-
-    // None of those points avoided collision
-    return pos();
+    return QRectF( QPointF(coll.topLeft().x() + qreal(COLLISION_OFFSET),
+                           coll.topLeft().y() + qreal(COLLISION_OFFSET)),
+                   QPointF(coll.bottomRight().x() - qreal(COLLISION_OFFSET),
+                           coll.bottomRight().y() - qreal(COLLISION_OFFSET)));
 }
 
-QRectF Node::genParentPotential(QRectF myPotential)
+/*
+ * Returns a scene mapped collision box, offset by deltaX and deltaY if desired.
+ *
+ * deltaX and deltaY are given the default value of 0, so the params can be
+ * ignored if only interested in the actual collision box and not a prediction
+ */
+QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
 {
-    qreal mix, miy, max, may; // min max
-    mix = miy = BIG_NUMBER;
-    max = may = -BIG_NUMBER;
+    QRectF c = toCollision(drawBox);
+    return QRectF(mapToScene( QPointF(c.topLeft().x() + deltaX,
+                                      c.topLeft().y() + deltaY)),
+                  mapToScene( QPointF(c.bottomRight().x() + deltaX,
+                                      c.bottomRight().y() + deltaY )));
+}
+
+/*
+ * Similar to getSceneCollisionBox, except for a drawBox instead. This isn't
+ * super efficient implemented this way, but it's not a big deal and I'm lazy
+ */
+QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
+{
+    return toDraw(getSceneCollisionBox(deltaX, deltaY));
+}
+
+//////////////////////////
+/// Collision Checking ///
+//////////////////////////
+
+/*
+ * Check a point for collision
+ * on success, everything gets updated accordingly
+ */
+bool Node::checkPotential(QPointF pt)
+{
+    QList<Node*> nodes;
+    QList<QRectF> potDraws;
+
+    Node* curr = this;
+    QRectF currPot = getSceneCollisionBox(pt.x() - scenePos().x(),
+                                          pt.y() - scenePos().y());
+    canvas->addRedBound(currPot);
+    while(true)
+    {
+        if (curr->isRoot())
+            break;
+
+        // Check currPot against other siblings
+        for (Node* sibling : curr->parent->children)
+        {
+            if (sibling == curr)
+                continue;
+
+            if (rectsCollide(currPot, sibling->getSceneCollisionBox()))
+                return false;
+        }
+
+        // Store data in case everything succeeds
+        nodes.prepend(curr);
+        potDraws.prepend(toDraw(currPot));
+
+        // Quit early
+        if (curr->parent->isRoot())
+            break;
+
+        // Percolate up
+        currPot = curr->predictParent(toDraw(currPot));
+        curr = curr->parent;
+    }
+
+    // Update all the nodes
+    nodes.pop_back();
+    potDraws.pop_back();
+
+    QList<Node*>::iterator it1 = nodes.begin();
+    QList<QRectF>::iterator it2 = potDraws.begin();
+    for ( ; it1 != nodes.end() && it2 != potDraws.end(); ++it1, ++it2)
+    {
+        Node* n = (*it1);
+        QRectF r = (*it2);
+        n->setDrawBoxFromPotential(QRectF(n->mapFromScene(r.topLeft()),
+                                          n->mapFromScene(r.bottomRight())));
+
+    }
+
+    return true;
+}
+
+/*
+ * Takes in a potential drawBox and returns a potential collision box for the
+ * parent if the drawBox got updated
+ */
+QRectF Node::predictParent(QRectF myPotDraw)
+{
+    qreal minX, minY, maxX, maxY;
+    minX = minY = BIG_NUMBER;
+    maxX = maxY = -BIG_NUMBER;
 
     QPointF tl, br;
     for (Node* sibling : parent->children)
     {
         if (sibling == this)
         {
-            // Convert the given argument to a drawBox
-            QRectF potDraw = sceneCollisionToSceneDraw(myPotential);
-            tl = parent->mapFromScene(potDraw.topLeft());
-            br = parent->mapFromScene(potDraw.bottomRight());
-            canvas->addBlueBound(potDraw);
+            tl = parent->mapFromScene(myPotDraw.topLeft());
+            br = parent->mapFromScene(myPotDraw.bottomRight());
         }
         else
         {
-            // Use the existing drawBox
-            QRectF sceneDraw = sceneCollisionToSceneDraw(sibling->getSceneCollisionBox());
-            tl = parent->mapFromScene(sceneDraw.topLeft());
-            br = parent->mapFromScene(sceneDraw.bottomRight());
-            canvas->addGreenBound(sceneDraw);
+            tl = parent->mapFromScene(sibling->getSceneDraw().topLeft());
+            br = parent->mapFromScene(sibling->getSceneDraw().bottomRight());
         }
 
-        if (tl.x() < mix)
-            mix = tl.x();
-        if (tl.y() < miy)
-            miy = tl.y();
-        if (br.x() > max)
-            max = br.x();
-        if (br.y() > may)
-            may = br.y();
+        if (tl.x() < minX)
+            minX = tl.x();
+        if (tl.y() < minY)
+            minY = tl.y();
+        if (br.x() > maxX)
+            maxX = br.x();
+        if (br.y() > maxY)
+            maxY = br.y();
     }
 
-    // Absolutely disgusting placeholder logic
-    /*
-    if (parent->children.size() == 1)
-    {
-        qreal cw = max - mix;
-        qreal ch = may - miy;
-
-        if (cw > max)
-            max = cw;
-        if (ch > may)
-            may = ch;
-        if (mix > 0)
-            mix = 0;
-        if (miy > 0)
-            miy = 0;
-    }
-    */
-
-    // Calculated points are in parent coords
-    //printMinMax(mix, miy, max, may);
-    QPointF tlp = QPointF(mix - qreal(GRID_SPACING),
-                          miy - qreal(GRID_SPACING));
-    QPointF brp = QPointF(max + qreal(GRID_SPACING),
-                          may + qreal(GRID_SPACING));
+    // Calculated points are a draw box in parent coords
+    QPointF tlp = QPointF(minX - qreal(GRID_SPACING),
+                          minY - qreal(GRID_SPACING));
+    QPointF brp = QPointF(maxX + qreal(GRID_SPACING),
+                          maxY + qreal(GRID_SPACING));
 
     // Convert back to scene
     QPointF tls = parent->mapToScene(tlp);
     QPointF brs = parent->mapToScene(brp);
-
-    QRectF rect(tls, brs);
-    canvas->addBlackBound(rect);
-    canvas->addRedBound(getDrawAsCollision(rect));
-    return getDrawAsCollision(rect);
+    return toCollision(QRectF(tls, brs));
 }
 
-bool Node::rectAvoidsCollision(QRectF rect) const
+/*
+ * Update the drawBox (this makes sure to tell Qt to repaint what it needs)
+ */
+void Node::setDrawBoxFromPotential(QRectF potential)
 {
-    if ( isRoot() )
-        return true;
-
-    canvas->clearBounds();
-    canvas->addBlueBound(rect);
-
-    for (Node* sibling : parent->children)
-    {
-        if (sibling == this)
-            continue;
-
-        QRectF sibBox = sibling->getSceneCollisionBox();
-
-        if (rectsCollide(rect, sibBox) )
-        {
-            canvas->addRedBound(sibBox);
-            return false;
-        }
-        else
-        {
-            canvas->addBlackBound(sibBox);
-        }
-    }
-    return true;
-}
-
-QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
-{
-    QRectF my = getDrawAsCollision(drawBox);
-    return QRectF(mapToScene( QPointF(my.topLeft().x() + deltaX,
-                                      my.topLeft().y() + deltaY)),
-                  mapToScene( QPointF(my.bottomRight().x() + deltaX,
-                                      my.bottomRight().y() + deltaY )));
-}
-
-QRectF Node::getDrawAsCollision(const QRectF &draw) const
-{
-    return QRectF(QPointF(draw.topLeft().x() - qreal(COLLISION_OFFSET),
-                          draw.topLeft().y() - qreal(COLLISION_OFFSET)),
-                  QPointF(draw.bottomRight().x() + qreal(COLLISION_OFFSET),
-                          draw.bottomRight().y() + qreal(COLLISION_OFFSET)));
+    prepareGeometryChange();
+    drawBox = potential;
 }
 
 /////////////
 /// Mouse ///
 /////////////
-
-/*
- * Override QGraphicsObject::hoverMoveEvent()
- *
- * Stores the mouse position as it moves around inside this Node. This is needed
- * as a workaround for difficulty mapping a global mouse position to a point
- * relative to this coordinate system.
- *
- * TODO: figure out a way to convert QCursor::mousePos() into local coords in a
- * way that doesn't have bugs, so that we no longer need this function to update
- * it every single time the mouse moves. That way, we can just poll it once and
- * save cycles spent storing the mousePos from the event.
- */
-void Node::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
-{
-    lastHoverPos = event->pos();
-
-    QGraphicsObject::hoverMoveEvent(event);
-}
 
 void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
@@ -544,22 +417,7 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
     update();
 
     if (event->buttons() & Qt::RightButton)
-    {
         qDebug() << "Right click";
-        canvas->clearBounds();
-        canvas->addBlackBound(this->getSceneCollisionBox());
-
-        QRectF dr( mapToScene(drawBox.topLeft()), mapToScene(drawBox.bottomRight()));
-        canvas->addGreenBound(dr);
-
-        qDebug() << "coll off" << COLLISION_OFFSET;
-        printRect("dr", dr);
-        printRect("coll", this->getSceneCollisionBox());
-
-        canvas->addRedBound(sceneCollisionToSceneDraw(getSceneCollisionBox()));
-    }
-
-    QGraphicsObject::mousePressEvent(event);
 }
 
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
@@ -583,18 +441,35 @@ void Node::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
     QGraphicsObject::hoverLeaveEvent(event);
 }
 
-/// New ///
-
-// rect is a collision box in scene coords
-// this function just reverses what the getSceneCollisionBox
-// does to a given rectangle
-QRectF Node::sceneCollisionToSceneDraw(QRectF rect)
+/*
+ * Dragging the mouse around will initiate the collision testing. If it finds a
+ * valid target, it will visually move the node there.
+ */
+void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    return QRectF( QPointF( rect.topLeft().x() + qreal(COLLISION_OFFSET),
-                            rect.topLeft().y() + qreal(COLLISION_OFFSET)),
-                   QPointF( rect.bottomRight().x() - qreal(COLLISION_OFFSET),
-                            rect.bottomRight().y() - qreal(COLLISION_OFFSET)) );
+    // Adjusted with the mouseOffset, so that we are standardizing
+    // calculations against the upper left corner
+    QPointF adj = QPointF(event->pos().x() - mouseOffset.x(),
+                          event->pos().y() - mouseOffset.y());
+
+    // Construct potential points to check collision against
+    QList<QPointF> bloom = constructBloom(scenePos(), mapToScene(adj));
+
+    if (bloom.empty())
+        return;
+
+    for (QPointF pt : bloom)
+    {
+        if (checkPotential(pt))
+        {
+            // Found an okay point, so make the move
+            moveBy(pt.x() - scenePos().x(),
+                   pt.y() - scenePos().y());
+            return;
+        }
+    }
 }
+
 
 ///////////////
 /// Helpers ///
@@ -705,6 +580,67 @@ void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY)
              << maxY
              << ")";
 }
+
+
+/*
+ * scenePos: original / old position of the drawBox topleft point
+ * sceneTarget: where the pos might move to (not yet snapped to grid)
+ *
+ * Note: both pos and target should be in scene coords
+ *
+ * Returns a list of "bloomed" potential points: basically giving the user a
+ * little leeway in their target movement near collision boundaries. These
+ * points are sorted such that the snapped target is first, but if that fails,
+ * the rest of the bloomed points can be checked in a closest-to-original-pos
+ * ordering.
+ *
+ * If the snapPoint is the same as the original pos, this function will return
+ * an empty list (no movement).
+ */
+QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget)
+{
+    QPointF snapped = snapPoint(sceneTarget);
+
+    QList<QPointF> bloom;
+
+    if (snapped.x() == scenePos.x() && snapped.y() == scenePos.y())
+        return bloom;
+
+    bloom.append(QPointF(snapped.x() - qreal(GRID_SPACING), snapped.y()));
+    bloom.append(QPointF(snapped.x(), snapped.y() - qreal(GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y()));
+    bloom.append(QPointF(snapped.x(), snapped.y() + qreal(GRID_SPACING)));
+
+    std::sort(bloom.begin(), bloom.end(),
+              [scenePos](const QPointF a, const QPointF b) ->
+              bool { return dist(a, scenePos) < dist(b, scenePos); });
+
+    bloom.prepend(snapped);
+    return bloom;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

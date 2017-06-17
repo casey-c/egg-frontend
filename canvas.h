@@ -22,6 +22,8 @@ public:
     void clearDots();
     void addBlackDot(QPointF pt);
 
+    void selectNode(Node* n);
+    void deselectNode(Node* n);
 private:
     //////////////
     /// Fields ///
@@ -55,6 +57,10 @@ private:
     void highlightRight();
     void highlightLeft();
     void highlightParent();
+
+    // Selection
+    QList<Node*> selectedNodes;
+    void clearSelection();
 
     // Debug
     bool showBounds;

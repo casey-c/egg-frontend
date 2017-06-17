@@ -189,3 +189,24 @@ void Canvas::addGreenBound(QRectF rect)
         blueBounds.append(scene->addRect(rect, QPen(QColor(0, 255, 0))));
 }
 
+
+// Selection
+void Canvas::clearSelection()
+{
+    for (Node* n : selectedNodes)
+        n->deselectThis();
+
+    selectedNodes.clear();
+}
+
+void Canvas::selectNode(Node* n)
+{
+    n->selectThis();
+    selectedNodes.append(n);
+}
+
+void Canvas::deselectNode(Node* n)
+{
+    selectedNodes.removeOne(n);
+    n->deselectThis();
+}

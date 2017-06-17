@@ -232,8 +232,10 @@ void Node::deselectThis()
  */
 void Node::toggleSelection()
 {
-    selected = !selected;
-    update();
+    if (selected)
+        canvas->deselectNode(this);
+    else
+        canvas->selectNode(this);
 }
 
 

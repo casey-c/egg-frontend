@@ -44,6 +44,9 @@ public:
     Node* getLeftSibling();
     Node* getChild();
 
+    // Selection
+    void selectThis();
+    void deselectThis();
 private:
 
     //////////////
@@ -95,8 +98,6 @@ private:
     Node(Canvas* can, Node* par, QString s, QPointF pt);
 
     // Selection
-    void selectThis();
-    void deselectThis();
     void toggleSelection();
 
     // Graphics

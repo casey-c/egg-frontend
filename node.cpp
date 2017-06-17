@@ -356,7 +356,7 @@ bool Node::checkPotential(QPointF pt)
     Node* curr = this;
     QRectF currPot = getSceneCollisionBox(pt.x() - scenePos().x(),
                                           pt.y() - scenePos().y());
-    canvas->addRedBound(currPot);
+    //canvas->addRedBound(currPot);
     while(true)
     {
         if (curr->isRoot())
@@ -506,8 +506,33 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     {
         // Adjusted with the mouseOffset, so that we are standardizing
         // calculations against the upper left corner
-        QPointF adj = QPointF(event->pos().x() - mouseOffset.x(),
-                              event->pos().y() - mouseOffset.y());
+        qreal dx = mouseOffset.x();
+        qreal dy = mouseOffset.y();
+
+        QList<Node*> sel = canvas->getSelectedNodes();
+
+        // TODO: do something clever with this
+        if (sel.contains(this))
+            qDebug() << "in selection";
+        else
+            qDebug() << "not in selection";
+
+        QList<QPointF> scenePts;
+
+        QPointF adj = QPointF(event->pos().x() - dx, event->pos().y() - dy);
+        scenePts.append(mapToScene(adj));
+
+        for (Node* n : sel)
+        {
+            if (n == this)
+                continue;
+            scenePts.append(n->mapToScene(n->drawBox.topLeft()));
+        }
+
+        canvas->clearDots();
+
+        for (QPointF pt : scenePts)
+            canvas->addBlackDot(pt);
 
         // Construct potential points to check collision against
         QList<QPointF> bloom = constructBloom(scenePos(), mapToScene(adj));
@@ -520,8 +545,16 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             if (checkPotential(pt))
             {
                 // Found an okay point, so make the move
-                moveBy(pt.x() - scenePos().x(),
-                       pt.y() - scenePos().y());
+                qreal mdx = pt.x() - scenePos().x();
+                qreal mdy = pt.y() - scenePos().y();
+                moveBy(mdx, mdy);
+
+                for (Node* n : sel)
+                {
+                    if (n == this)
+                        continue;
+                    n->moveBy(mdx, mdy);
+                }
                 return;
             }
         }

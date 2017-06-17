@@ -24,6 +24,9 @@ public:
 
     void selectNode(Node* n);
     void deselectNode(Node* n);
+
+    QList<Node*> getSelectedNodes();
+    bool hasAnySelectedNodes();
 private:
     //////////////
     /// Fields ///

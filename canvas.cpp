@@ -210,3 +210,13 @@ void Canvas::deselectNode(Node* n)
     selectedNodes.removeOne(n);
     n->deselectThis();
 }
+
+QList<Node*> Canvas::getSelectedNodes()
+{
+    return selectedNodes;
+}
+
+bool Canvas::hasAnySelectedNodes()
+{
+    return !selectedNodes.empty();
+}

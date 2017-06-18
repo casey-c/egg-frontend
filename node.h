@@ -117,7 +117,7 @@ private:
     // Collision Checking
     bool checkPotential(QPointF pt);
     QRectF predictParent(QRectF myPotDraw);
-    void setDrawBoxFromPotential(QRectF potential);
+    void setDrawBoxFromPotential(QRectF potDraw);
 
     // Mouse
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;

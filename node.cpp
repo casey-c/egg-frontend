@@ -345,8 +345,7 @@ QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
 //////////////////////////
 
 /*
- * Check a point for collision
- * on success, everything gets updated accordingly
+ * Check a point for collision given a relative move point.
  */
 bool Node::checkPotential(QPointF pt)
 {
@@ -354,9 +353,10 @@ bool Node::checkPotential(QPointF pt)
     QList<QRectF> potDraws;
 
     Node* curr = this;
-    QRectF currPot = getSceneCollisionBox(pt.x() - scenePos().x(),
-                                          pt.y() - scenePos().y());
-    //canvas->addRedBound(currPot);
+    //QRectF currPot = getSceneCollisionBox(pt.x() - scenePos().x(),
+                                          //pt.y() - scenePos().y());
+    QRectF currPot = getSceneCollisionBox(pt.x(), pt.y());
+
     while(true)
     {
         if (curr->isRoot())
@@ -452,10 +452,10 @@ QRectF Node::predictParent(QRectF myPotDraw)
 /*
  * Update the drawBox (this makes sure to tell Qt to repaint what it needs)
  */
-void Node::setDrawBoxFromPotential(QRectF potential)
+void Node::setDrawBoxFromPotential(QRectF potDraw)
 {
     prepareGeometryChange();
-    drawBox = potential;
+    drawBox = potDraw;
 }
 
 /////////////
@@ -526,7 +526,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         {
             if (n == this)
                 continue;
-            scenePts.append(n->mapToScene(n->drawBox.topLeft()));
+            scenePts.append(n->mapToScene(n->mapFromParent((n->drawBox.topLeft()))));
         }
 
         canvas->clearDots();
@@ -542,18 +542,21 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
         for (QPointF pt : bloom)
         {
+            // Pt is now a delta
             if (checkPotential(pt))
             {
                 // Found an okay point, so make the move
-                qreal mdx = pt.x() - scenePos().x();
-                qreal mdy = pt.y() - scenePos().y();
-                moveBy(mdx, mdy);
+                //qreal mdx = pt.x() - scenePos().x();
+                //qreal mdy = pt.y() - scenePos().y();
+                //moveBy(mdx, mdy);
+                moveBy(pt.x(), pt.y());
 
                 for (Node* n : sel)
                 {
                     if (n == this)
                         continue;
-                    n->moveBy(mdx, mdy);
+                    n->moveBy(pt.x(), pt.y());
+                    //n->moveBy(mdx, mdy);
                 }
                 return;
             }
@@ -687,6 +690,11 @@ void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY)
  *
  * If the snapPoint is the same as the original pos, this function will return
  * an empty list (no movement).
+ *
+ * The points were originally absolute scene points (the contents of the bloom
+ * list) -- however, with the multi-selection support, it is easier to
+ * manipulate multiple items if they all work off deltas (the new relBloom list
+ * that's returned).
  */
 QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget)
 {
@@ -707,9 +715,14 @@ QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget)
               bool { return dist(a, scenePos) < dist(b, scenePos); });
 
     bloom.prepend(snapped);
-    return bloom;
-}
 
+    // Convert to relative
+    QList<QPointF> relBloom;
+    for (QPointF pt : bloom)
+        relBloom.append(QPointF(pt.x() - scenePos.x(),  pt.y() - scenePos.y()));
+
+    return relBloom;
+}
 
 
 

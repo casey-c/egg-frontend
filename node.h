@@ -115,7 +115,7 @@ private:
     QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
 
     // Collision Checking
-    bool checkPotential(QPointF pt);
+    bool checkPotential(QPointF pt, QList<Node*> sel);
     QRectF predictParent(QRectF myPotDraw);
     void setDrawBoxFromPotential(QRectF potDraw);
 

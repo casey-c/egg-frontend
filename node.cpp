@@ -347,7 +347,7 @@ QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
 /*
  * Check a point for collision given a relative move point.
  */
-bool Node::checkPotential(QPointF pt)
+bool Node::checkPotential(QPointF pt, QList<Node*> sel)
 {
     QList<Node*> nodes;
     QList<QRectF> potDraws;
@@ -355,8 +355,55 @@ bool Node::checkPotential(QPointF pt)
     Node* curr = this;
     QRectF currPot = getSceneCollisionBox(pt.x(), pt.y());
 
+    QList<Node*> currNodes = sel;
+    QList<QRectF> currPots;
+    for (Node* n : sel)
+        currPots.append(n->getSceneCollisionBox(pt.x(), pt.y()));
+
     while(true)
     {
+        QList<Node*>::iterator itn = currNodes.begin();
+        QList<QRectF>::iterator itp = currPots.begin();
+
+        for (; itn != currNodes.end() && itp != currPots.end(); ++itn, ++itp)
+        {
+            Node* curr = *itn;
+            QRectF currPot = *itp;
+
+            if (curr->isRoot())
+                // break out of while
+                goto update;
+                //break; //this gets out of the for loop only...
+
+            // Check the currPot against other siblings
+            for (Node* sibling : curr->parent->children)
+            {
+                if (sibling == curr)
+                    continue;
+                else if (!currNodes.contains(sibling)) // not in the selection
+                {
+                    // not moving, so check its collision against the
+                    // scene collision box
+                    if (rectsCollide(currPot, sibling->getSceneCollisionBox()))
+                        return false;
+                }
+            }
+
+            // Store data in case everything succeeds
+
+        }
+
+        // Quit early
+        //if (curr->parent->isRoot())
+            //goto update;
+
+        // Percolate up
+        break;
+
+
+#if 0
+        /// OLD:
+
         if (curr->isRoot())
             break;
 
@@ -381,7 +428,14 @@ bool Node::checkPotential(QPointF pt)
         // Percolate up
         currPot = curr->predictParent(toDraw(currPot));
         curr = curr->parent;
+#endif
     }
+
+update:
+
+    return true;
+
+    /// TODO: update
 
     // Update all the nodes
     nodes.pop_back();
@@ -547,7 +601,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         for (QPointF pt : bloom)
         {
             // Pt is now a delta
-            if (checkPotential(pt))
+            if (checkPotential(pt, sel))
             {
                 // Found an okay point, so make the move
                 moveBy(pt.x(), pt.y());

@@ -116,7 +116,8 @@ private:
 
     // Collision Checking
     bool checkPotential(QPointF pt, QList<Node*> sel);
-    QRectF predictParent(QRectF myPotDraw);
+    //QRectF predictParent(QRectF myPotDraw);
+    static QRectF predictParent(QList<Node*> changedNodes, QList<QRectF> changedCollide);
     void setDrawBoxFromPotential(QRectF potDraw);
 
     // Mouse

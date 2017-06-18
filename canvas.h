@@ -24,6 +24,7 @@ public:
 
     void selectNode(Node* n);
     void deselectNode(Node* n);
+    void clearSelection();
 
     QList<Node*> getSelectedNodes();
     bool hasAnySelectedNodes();
@@ -63,7 +64,6 @@ private:
 
     // Selection
     QList<Node*> selectedNodes;
-    void clearSelection();
 
     // Debug
     bool showBounds;

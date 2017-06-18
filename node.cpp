@@ -353,8 +353,6 @@ bool Node::checkPotential(QPointF pt)
     QList<QRectF> potDraws;
 
     Node* curr = this;
-    //QRectF currPot = getSceneCollisionBox(pt.x() - scenePos().x(),
-                                          //pt.y() - scenePos().y());
     QRectF currPot = getSceneCollisionBox(pt.x(), pt.y());
 
     while(true)
@@ -511,11 +509,13 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
         QList<Node*> sel = canvas->getSelectedNodes();
 
-        // TODO: do something clever with this
-        if (sel.contains(this))
-            qDebug() << "in selection";
-        else
-            qDebug() << "not in selection";
+        // Work on this as a selected item
+        if (!sel.contains(this))
+        {
+            canvas->clearSelection();
+            canvas->selectNode(this);
+        }
+        sel = canvas->getSelectedNodes();
 
         QList<QPointF> scenePts;
 
@@ -538,7 +538,11 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         QList<QPointF> bloom = constructBloom(scenePos(), mapToScene(adj));
 
         if (bloom.empty())
+        {
+            if (sel.size() == 1)
+                canvas->clearSelection();
             return;
+        }
 
         for (QPointF pt : bloom)
         {
@@ -546,9 +550,6 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             if (checkPotential(pt))
             {
                 // Found an okay point, so make the move
-                //qreal mdx = pt.x() - scenePos().x();
-                //qreal mdy = pt.y() - scenePos().y();
-                //moveBy(mdx, mdy);
                 moveBy(pt.x(), pt.y());
 
                 for (Node* n : sel)
@@ -556,8 +557,10 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                     if (n == this)
                         continue;
                     n->moveBy(pt.x(), pt.y());
-                    //n->moveBy(mdx, mdy);
                 }
+
+                if (sel.size() == 1)
+                    canvas->clearSelection();
                 return;
             }
         }

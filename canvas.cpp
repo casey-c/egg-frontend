@@ -66,7 +66,10 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         addStatement("C");
         break;
     case Qt::Key_D:
-        addStatement("D");
+        if (event->modifiers() & Qt::ControlModifier)
+            clearSelection();
+        else
+            addStatement("D");
         break;
     case Qt::Key_E:
         addStatement("E");

@@ -201,6 +201,14 @@ void Canvas::clearSelection()
 
 void Canvas::selectNode(Node* n)
 {
+    // Ensure all nodes in the selection share the same parent
+    if (!selectedNodes.empty())
+    {
+        Node* parent = selectedNodes.first()->getParent();
+        if (n->getParent() != parent)
+            clearSelection();
+    }
+
     n->selectThis();
     selectedNodes.append(n);
 }

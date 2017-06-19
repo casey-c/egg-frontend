@@ -204,6 +204,9 @@ void Canvas::clearSelection()
 
 void Canvas::selectNode(Node* n)
 {
+    // TODO: could put a check in here to ensure we don't select the same node
+    // twice, but that may be unnecessary and ineffient
+
     // Ensure all nodes in the selection share the same parent
     if (!selectedNodes.empty())
     {
@@ -224,6 +227,16 @@ void Canvas::deselectNode(Node* n)
 
 QList<Node*> Canvas::getSelectedNodes()
 {
+    return selectedNodes;
+}
+
+QList<Node*> Canvas::selectionIncluding(Node* n)
+{
+    if (selectedNodes.contains(n))
+        return selectedNodes;
+
+    clearSelection();
+    selectNode(n);
     return selectedNodes;
 }
 

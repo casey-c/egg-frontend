@@ -27,6 +27,7 @@ public:
     void clearSelection();
 
     QList<Node*> getSelectedNodes();
+    QList<Node*> selectionIncluding(Node* n);
     bool hasAnySelectedNodes();
 private:
     //////////////

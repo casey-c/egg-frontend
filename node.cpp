@@ -420,6 +420,7 @@ bool Node::checkPt(const QList<Node*> &sel, QPointF pt)
         return false;
 
     Node* parent = changedNodes.first()->parent;
+    bool first = true;
     do
     {
         QList<QRectF> alteredDraws;
@@ -442,24 +443,34 @@ bool Node::checkPt(const QList<Node*> &sel, QPointF pt)
             }
 
             // Store
-            updateNodes.append(changed);
-            updateBoxes.append(changedRect);
+            if (!first)
+            {
+                updateNodes.append(changed);
+                updateBoxes.append(changedRect);
+            }
+
             alteredDraws.append(changedRect);
         }
 
+        // Edge case
+        if (parent->isRoot())
+            break;
+
         // Percolate up
-        return true;
+        QRectF next = parent->predictMySceneDraw(changedNodes, alteredDraws);
+        parent->canvas->addRedBound(next);
+
         changedNodes.clear();
         changedNodes.append(parent);
 
-        QRectF next = parent->predictMySceneDraw(changedNodes, alteredDraws);
         drawBoxes.clear();
         drawBoxes.append(next);
 
         parent = parent->parent;
+        first = false;
         // TODO: check if next rect is the same as its drawBox to save work
     }
-    while (!parent->isRoot());
+    while (parent != nullptr);
 
     // Update all the nodes
     QList<Node*>::iterator itn = updateNodes.begin();
@@ -799,6 +810,63 @@ QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget)
         relBloom.append(QPointF(pt.x() - scenePos.x(),  pt.y() - scenePos.y()));
 
     return relBloom;
+}
+
+
+QRectF Node::predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws)
+{
+    qreal minX, minY, maxX, maxY;
+    minX = minY = BIG_NUMBER;
+    maxX = maxY = -BIG_NUMBER;
+
+    for (Node* child : children)
+    {
+        QPointF tl, br;
+        bool usedAlt = false;
+
+        QList<Node*>::iterator itn = altNodes.begin();
+        QList<QRectF>::iterator itr = altDraws.begin();
+        for (; itn != altNodes.end(); ++itn, ++itr)
+        {
+            Node* n = (*itn);
+            QRectF r = (*itr);
+
+            if (n == child)
+            {
+                usedAlt = true;
+                tl = mapFromScene(r.topLeft());
+                br = mapFromScene(r.bottomRight());
+                break;
+            }
+        }
+
+        if (!usedAlt)
+        {
+            tl = mapFromScene(child->getSceneDraw().topLeft());
+            br = mapFromScene(child->getSceneDraw().bottomRight());
+        }
+
+        if (tl.x() < minX)
+            minX = tl.x();
+        if (tl.y() < minY)
+            minY = tl.y();
+        if (br.x() > maxX)
+            maxX = br.x();
+        if (br.y() > maxY)
+            maxY = br.y();
+    }
+
+    // Calculated points are a draw box in parent coords
+    QPointF tlp = QPointF(minX - qreal(GRID_SPACING),
+                          minY - qreal(GRID_SPACING));
+    QPointF brp = QPointF(maxX + qreal(GRID_SPACING),
+                          maxY + qreal(GRID_SPACING));
+
+    // Convert back to scene
+    QPointF tls = mapToScene(tlp);
+    QPointF brs = mapToScene(brp);
+    return QRectF(tls, brs);
+    //return toCollision(QRectF(tls, brs));
 }
 
 

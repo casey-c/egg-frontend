@@ -227,6 +227,12 @@ void Node::deselectThis()
     update();
 }
 
+void Node::selectAllKids()
+{
+    for (Node* child : children)
+        canvas->selectNode(child);
+}
+
 /*
  * Inverts whether this is selected or not
  */

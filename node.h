@@ -47,6 +47,7 @@ public:
     // Selection
     void selectThis();
     void deselectThis();
+    void selectAllKids();
 private:
 
     //////////////

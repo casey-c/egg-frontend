@@ -49,7 +49,10 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         addCut();
         break;
     case Qt::Key_A:
-        addStatement("A");
+        if ( event->modifiers() & Qt::ControlModifier)
+            highlighted->selectAllKids();
+        else
+            addStatement("A");
         break;
     case Qt::Key_B:
         if ( event->modifiers() & Qt::ControlModifier)
@@ -87,6 +90,14 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
 {
     lastMousePos = mapToScene(event->pos());
     QGraphicsView::mouseMoveEvent(event);
+}
+
+void Canvas::mousePressEvent(QMouseEvent* event)
+{
+    if (highlighted == root)
+        clearSelection();
+
+    QGraphicsView::mousePressEvent(event);
 }
 
 void Canvas::setHighlight(Node* node)
@@ -204,8 +215,9 @@ void Canvas::clearSelection()
 
 void Canvas::selectNode(Node* n)
 {
-    // TODO: could put a check in here to ensure we don't select the same node
-    // twice, but that may be unnecessary and ineffient
+    // Make sure we don't add the same node twice
+    if (selectedNodes.contains(n))
+        return;
 
     // Ensure all nodes in the selection share the same parent
     if (!selectedNodes.empty())

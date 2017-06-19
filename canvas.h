@@ -50,6 +50,7 @@ private:
     void mouseMoveEvent(QMouseEvent *event) override;
     void drawBackground(QPainter* painter,
                         const QRectF &rect) override;
+    void mousePressEvent(QMouseEvent* event) override;
 
     // Add
     void addCut();

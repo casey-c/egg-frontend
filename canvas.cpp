@@ -49,7 +49,10 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         addCut();
         break;
     case Qt::Key_A:
-        addStatement("A");
+        if ( event->modifiers() & Qt::ControlModifier)
+            highlighted->selectAllKids();
+        else
+            addStatement("A");
         break;
     case Qt::Key_B:
         if ( event->modifiers() & Qt::ControlModifier)
@@ -66,7 +69,10 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         addStatement("C");
         break;
     case Qt::Key_D:
-        addStatement("D");
+        if (event->modifiers() & Qt::ControlModifier)
+            clearSelection();
+        else
+            addStatement("D");
         break;
     case Qt::Key_E:
         addStatement("E");
@@ -84,6 +90,14 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
 {
     lastMousePos = mapToScene(event->pos());
     QGraphicsView::mouseMoveEvent(event);
+}
+
+void Canvas::mousePressEvent(QMouseEvent* event)
+{
+    if (highlighted == root)
+        clearSelection();
+
+    QGraphicsView::mousePressEvent(event);
 }
 
 void Canvas::setHighlight(Node* node)
@@ -189,3 +203,56 @@ void Canvas::addGreenBound(QRectF rect)
         blueBounds.append(scene->addRect(rect, QPen(QColor(0, 255, 0))));
 }
 
+
+// Selection
+void Canvas::clearSelection()
+{
+    for (Node* n : selectedNodes)
+        n->deselectThis();
+
+    selectedNodes.clear();
+}
+
+void Canvas::selectNode(Node* n)
+{
+    // Make sure we don't add the same node twice
+    if (selectedNodes.contains(n))
+        return;
+
+    // Ensure all nodes in the selection share the same parent
+    if (!selectedNodes.empty())
+    {
+        Node* parent = selectedNodes.first()->getParent();
+        if (n->getParent() != parent)
+            clearSelection();
+    }
+
+    n->selectThis();
+    selectedNodes.append(n);
+}
+
+void Canvas::deselectNode(Node* n)
+{
+    selectedNodes.removeOne(n);
+    n->deselectThis();
+}
+
+QList<Node*> Canvas::getSelectedNodes()
+{
+    return selectedNodes;
+}
+
+QList<Node*> Canvas::selectionIncluding(Node* n)
+{
+    if (selectedNodes.contains(n))
+        return selectedNodes;
+
+    clearSelection();
+    selectNode(n);
+    return selectedNodes;
+}
+
+bool Canvas::hasAnySelectedNodes()
+{
+    return !selectedNodes.empty();
+}

@@ -22,6 +22,13 @@ public:
     void clearDots();
     void addBlackDot(QPointF pt);
 
+    void selectNode(Node* n);
+    void deselectNode(Node* n);
+    void clearSelection();
+
+    QList<Node*> getSelectedNodes();
+    QList<Node*> selectionIncluding(Node* n);
+    bool hasAnySelectedNodes();
 private:
     //////////////
     /// Fields ///
@@ -43,6 +50,7 @@ private:
     void mouseMoveEvent(QMouseEvent *event) override;
     void drawBackground(QPainter* painter,
                         const QRectF &rect) override;
+    void mousePressEvent(QMouseEvent* event) override;
 
     // Add
     void addCut();
@@ -55,6 +63,9 @@ private:
     void highlightRight();
     void highlightLeft();
     void highlightParent();
+
+    // Selection
+    QList<Node*> selectedNodes;
 
     // Debug
     bool showBounds;

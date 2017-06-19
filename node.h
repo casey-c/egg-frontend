@@ -44,6 +44,10 @@ public:
     Node* getLeftSibling();
     Node* getChild();
 
+    // Selection
+    void selectThis();
+    void deselectThis();
+    void selectAllKids();
 private:
 
     //////////////
@@ -69,6 +73,8 @@ private:
     QRadialGradient gradHighlighted;
     QRadialGradient gradClicked;
 
+    QRadialGradient gradSelected;
+
     QGraphicsDropShadowEffect* shadow;
 
     // Important points
@@ -81,6 +87,11 @@ private:
     QString letter;
     QFont font;
 
+    // Selection
+    bool selected;
+
+    // New collision
+
     ///////////////
     /// Methods ///
     ///////////////
@@ -88,6 +99,9 @@ private:
     // Private constructor
     Node(Canvas* can, Node* par, NodeType t, QPointF pt);
     Node(Canvas* can, Node* par, QString s, QPointF pt);
+
+    // Selection
+    void toggleSelection();
 
     // Graphics
     QRectF boundingRect() const override;
@@ -104,9 +118,9 @@ private:
     QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
 
     // Collision Checking
-    bool checkPotential(QPointF pt);
-    QRectF predictParent(QRectF myPotDraw);
-    void setDrawBoxFromPotential(QRectF potential);
+    static bool checkPotential(QList<Node*> sel, QPointF pt);
+    QRectF predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws);
+    void setDrawBoxFromPotential(QRectF potDraw);
 
     // Mouse
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;

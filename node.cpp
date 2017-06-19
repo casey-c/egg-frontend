@@ -351,69 +351,29 @@ QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
 //////////////////////////
 
 /*
- * Check a point for collision given a relative move point.
+ * Checks if the selection list sel can be moved by the relative delta given by
+ * pt. If no collisions occur (including those potentially created if the parent
+ * grows), then this function will update all the draw boxes of the parent,
+ * grandparent, etc.
+ *
+ * Important note: this function will NOT alter the draw box of the selection
+ * list. As these nodes are siblings and will not change in size, I believe it's
+ * more efficient to simply move with the provided moveBy Qt function, rather
+ * than needing to recalculate the whole draw box as is required for ancestor
+ * nodes. This move should happen elsewhere, iff checkPotential returns true.
+ *
+ * Params:
+ *   sel - the selection list (assumed to share a parent)
+ *   pt - a QPointF storing a deltaX and deltaY value (in GRID_SPACING units)
+ *
+ * Returns:
+ *   true - if no collisions occur; drawboxes are automatically updated, but the
+ *          selection list is not moved
+ *   false - if any collision occurs at any point traveling up the tree; in this
+ *           case, no changes are made to any nodes
  */
-bool Node::checkPotential(QPointF pt)
+bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
 {
-    QList<Node*> nodes;
-    QList<QRectF> potDraws;
-
-    Node* curr = this;
-    QRectF currPot = getSceneCollisionBox(pt.x(), pt.y());
-
-    while(true)
-    {
-        if (curr->isRoot())
-            break;
-
-        // Check currPot against other siblings
-        for (Node* sibling : curr->parent->children)
-        {
-            if (sibling == curr)
-                continue;
-
-            if (rectsCollide(currPot, sibling->getSceneCollisionBox()))
-                return false;
-        }
-
-        // Store data in case everything succeeds
-        nodes.prepend(curr);
-        potDraws.prepend(toDraw(currPot));
-
-        // Quit early
-        if (curr->parent->isRoot())
-            break;
-
-        // Percolate up
-        currPot = curr->predictParent(toDraw(currPot));
-        curr = curr->parent;
-    }
-
-    // Update all the nodes
-    nodes.pop_back();
-    potDraws.pop_back();
-
-    QList<Node*>::iterator it1 = nodes.begin();
-    QList<QRectF>::iterator it2 = potDraws.begin();
-    for ( ; it1 != nodes.end() && it2 != potDraws.end(); ++it1, ++it2)
-    {
-        Node* n = (*it1);
-        QRectF r = (*it2);
-        n->setDrawBoxFromPotential(QRectF(n->mapFromScene(r.topLeft()),
-                                          n->mapFromScene(r.bottomRight())));
-
-    }
-
-    return true;
-}
-
-
-/*
- * static replacement for checkPotential
- */
-bool Node::checkPt(const QList<Node*> &sel, QPointF pt)
-{
-    QList<Node*> changedNodes = sel;
     QList<QRectF> drawBoxes; // scene mapped
 
     for (Node* n : changedNodes)
@@ -431,7 +391,10 @@ bool Node::checkPt(const QList<Node*> &sel, QPointF pt)
     {
         QList<QRectF> alteredDraws;
 
-        // collision check changed nodes against non changed nodes
+        // This is kind of confusing: basically, at each stage, check each of
+        // the items in the changedNodes list against all of its siblings that
+        // aren't also changed... i.e. check the moved nodes against the nodes
+        // that don't move.
         QList<Node*>::iterator itn = changedNodes.begin();
         QList<QRectF>::iterator itr = drawBoxes.begin();
 
@@ -442,14 +405,15 @@ bool Node::checkPt(const QList<Node*> &sel, QPointF pt)
 
             for (Node* n : parent->children)
             {
+                // The actual collision check
                 if (!changedNodes.contains(n) &&
-                        rectsCollide(n->getSceneCollisionBox(),
-                                     changed->toCollision(changedRect)))
+                     rectsCollide(n->getSceneCollisionBox(),
+                                  changed->toCollision(changedRect)))
                     return false;
             }
 
             // Store
-            if (!first)
+            if (!first) // don't want to update the original nodes' drawBoxes
             {
                 updateNodes.append(changed);
                 updateBoxes.append(changedRect);
@@ -475,6 +439,7 @@ bool Node::checkPt(const QList<Node*> &sel, QPointF pt)
         parent = parent->parent;
         first = false;
         // TODO: check if next rect is the same as its drawBox to save work
+        // (honestly, it's probably not worth the effort to optimize here)
     }
     while (parent != nullptr);
 
@@ -494,29 +459,57 @@ bool Node::checkPt(const QList<Node*> &sel, QPointF pt)
 }
 
 /*
- * Takes in a potential drawBox and returns a potential collision box for the
- * parent if the drawBox got updated
+ * Takes in a set of nodes and their adjusted drawBoxes, and constructs my
+ * resulting drawBox mapped to scene coords.
+ *
+ * Params:
+ *   altNodes - nodes that have a different potential drawBox
+ *   altDraws - parallel to altNodes, these are the scene-mapped potentials
+ *
+ * Returns:
+ *   a QRectF of my drawBox, should those altNodes be moved to their altDraw
+ *   locations
  */
-QRectF Node::predictParent(QRectF myPotDraw)
+QRectF Node::predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws)
 {
     qreal minX, minY, maxX, maxY;
     minX = minY = BIG_NUMBER;
     maxX = maxY = -BIG_NUMBER;
 
-    QPointF tl, br;
-    for (Node* sibling : parent->children)
+    for (Node* child : children)
     {
-        if (sibling == this)
+        QPointF tl, br;
+        bool usedAlt = false;
+
+        // Check if this child is in altNodes
+        // NOTE: this is a bit convoluted because I used parallel lists. I
+        // should have used a smarter data structure, or even a list of pairs
+        // but oh well.
+        QList<Node*>::iterator itn = altNodes.begin();
+        QList<QRectF>::iterator itr = altDraws.begin();
+        for (; itn != altNodes.end(); ++itn, ++itr)
         {
-            tl = parent->mapFromScene(myPotDraw.topLeft());
-            br = parent->mapFromScene(myPotDraw.bottomRight());
-        }
-        else
-        {
-            tl = parent->mapFromScene(sibling->getSceneDraw().topLeft());
-            br = parent->mapFromScene(sibling->getSceneDraw().bottomRight());
+            Node* n = (*itn);
+            QRectF r = (*itr);
+
+            if (n == child)
+            {
+                usedAlt = true;
+                tl = mapFromScene(r.topLeft());
+                br = mapFromScene(r.bottomRight());
+                break;
+            }
         }
 
+        // We didn't set tl & br yet, since this node wasn't an altNode,
+        // therefore use the existing sceneDraw box for the coords instead
+        if (!usedAlt)
+        {
+            tl = mapFromScene(child->getSceneDraw().topLeft());
+            br = mapFromScene(child->getSceneDraw().bottomRight());
+        }
+
+        // Update the min and max values with these new points
         if (tl.x() < minX)
             minX = tl.x();
         if (tl.y() < minY)
@@ -534,13 +527,15 @@ QRectF Node::predictParent(QRectF myPotDraw)
                           maxY + qreal(GRID_SPACING));
 
     // Convert back to scene
-    QPointF tls = parent->mapToScene(tlp);
-    QPointF brs = parent->mapToScene(brp);
-    return toCollision(QRectF(tls, brs));
+    QPointF tls = mapToScene(tlp);
+    QPointF brs = mapToScene(brp);
+    return QRectF(tls, brs);
 }
 
 /*
- * Update the drawBox (this makes sure to tell Qt to repaint what it needs)
+ * If we determine a new drawBox is okay, call this function to set it for real.
+ * This makes sure to update the bookkeeping required by Qt and schedule a
+ * repaint.
  */
 void Node::setDrawBoxFromPotential(QRectF potDraw)
 {
@@ -608,15 +603,10 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
         for (Node* n : sel)
         {
-            if (n == this)
+            if (n == this) // (covered above)
                 continue;
             scenePts.append(n->getSceneDraw().topLeft());
         }
-
-        // DEBUG
-        canvas->clearDots();
-        for (QPointF pt : scenePts)
-            canvas->addBlackDot(pt);
 
         // Construct potential points to check collision against
         QList<QPointF> bloom = constructBloom(scenePos(), mapToScene(adj));
@@ -633,7 +623,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         for (QPointF pt : bloom)
         {
             // Check
-            if (Node::checkPt(sel, pt))
+            if (checkPotential(sel, pt))
             {
                 for (Node* n : sel)
                     n->moveBy(pt.x(), pt.y());
@@ -641,16 +631,6 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
                     canvas->clearSelection();
                 return;
             }
-            //if (checkPotential(pt))
-            //{
-                // Found an okay point, so make the move
-                //for (Node* n : sel)
-                    //n->moveBy(pt.x(), pt.y());
-//
-                //if (sel.size() == 1)
-                    //canvas->clearSelection();
-                //return;
-            //}
         }
 
         if (sel.size() == 1)
@@ -819,61 +799,6 @@ QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget)
 }
 
 
-QRectF Node::predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws)
-{
-    qreal minX, minY, maxX, maxY;
-    minX = minY = BIG_NUMBER;
-    maxX = maxY = -BIG_NUMBER;
-
-    for (Node* child : children)
-    {
-        QPointF tl, br;
-        bool usedAlt = false;
-
-        QList<Node*>::iterator itn = altNodes.begin();
-        QList<QRectF>::iterator itr = altDraws.begin();
-        for (; itn != altNodes.end(); ++itn, ++itr)
-        {
-            Node* n = (*itn);
-            QRectF r = (*itr);
-
-            if (n == child)
-            {
-                usedAlt = true;
-                tl = mapFromScene(r.topLeft());
-                br = mapFromScene(r.bottomRight());
-                break;
-            }
-        }
-
-        if (!usedAlt)
-        {
-            tl = mapFromScene(child->getSceneDraw().topLeft());
-            br = mapFromScene(child->getSceneDraw().bottomRight());
-        }
-
-        if (tl.x() < minX)
-            minX = tl.x();
-        if (tl.y() < minY)
-            minY = tl.y();
-        if (br.x() > maxX)
-            maxX = br.x();
-        if (br.y() > maxY)
-            maxY = br.y();
-    }
-
-    // Calculated points are a draw box in parent coords
-    QPointF tlp = QPointF(minX - qreal(GRID_SPACING),
-                          minY - qreal(GRID_SPACING));
-    QPointF brp = QPointF(maxX + qreal(GRID_SPACING),
-                          maxY + qreal(GRID_SPACING));
-
-    // Convert back to scene
-    QPointF tls = mapToScene(tlp);
-    QPointF brs = mapToScene(brp);
-    return QRectF(tls, brs);
-    //return toCollision(QRectF(tls, brs));
-}
 
 
 

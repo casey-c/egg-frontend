@@ -91,10 +91,6 @@ private:
     bool selected;
 
     // New collision
-    //QuantumBool potentialShift;
-    //QRectF potDraw;
-    //void setPotentialShift(QPointF delta);
-    QRectF predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws);
 
     ///////////////
     /// Methods ///
@@ -122,11 +118,8 @@ private:
     QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
 
     // Collision Checking
-    bool checkPotential(QPointF pt);
-
-    static bool checkPt(const QList<Node*> &sel, QPointF pt);
-
-    QRectF predictParent(QRectF myPotDraw);
+    static bool checkPotential(QList<Node*> sel, QPointF pt);
+    QRectF predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws);
     void setDrawBoxFromPotential(QRectF potDraw);
 
     // Mouse

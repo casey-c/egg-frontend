@@ -60,7 +60,8 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     highlighted(false),
     mouseDown(false),
     mouseOffset(0, 0),
-    selected(false)
+    selected(false),
+    ghost(false)
 {
     // Drop shadow on click and drag
     shadow = new QGraphicsDropShadowEffect(this);
@@ -120,7 +121,8 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     mouseDown(false),
     mouseOffset(0, 0),
     letter(s),
-    selected(false)
+    selected(false),
+    ghost(false)
 {
     shadow = new QGraphicsDropShadowEffect(this);
     shadow->setEnabled(false);
@@ -285,6 +287,11 @@ void Node::paint(QPainter* painter,
         else
             painter->setBrush(QBrush(gradDefault));
     }
+
+    if (ghost)
+        setOpacity(0.5);
+    else
+        setOpacity(1.0);
 
     painter->drawRoundedRect(drawBox, qreal(BORDER_RADIUS), qreal(BORDER_RADIUS));
 
@@ -551,6 +558,9 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     if (event->buttons() & Qt::LeftButton)
     {
+        if (event->modifiers() & Qt::AltModifier)
+            ghost = true;
+
         mouseOffset = event->pos();
         shadow->setEnabled(true);
         mouseDown = true;
@@ -564,6 +574,7 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     mouseDown = false;
     shadow->setEnabled(false);
+    ghost = false;
     update();
 
     QGraphicsObject::mouseReleaseEvent(event);
@@ -619,10 +630,22 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             return;
         }
 
+        canvas->clearBounds();
+
         // Moved a lil bit at least, so lets check it
         for (QPointF pt : bloom)
         {
             // Check
+            if (ghost)
+            {
+                Node* collider = determineNewParent(pt);
+                canvas->addBlueBound(collider->getSceneDraw());
+                for (Node* n : sel)
+                    n->moveBy(pt.x(), pt.y());
+                if (sel.size() == 1)
+                    canvas->clearSelection();
+                return;
+            }
             if (checkPotential(sel, pt))
             {
                 for (Node* n : sel)
@@ -638,6 +661,37 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     }
 }
 
+/////////////////////////////
+/// Change parent / ghost ///
+/////////////////////////////
+
+Node* Node::determineNewParent(QPointF pt)
+{
+    Node* root = canvas->getRoot();
+    QList<Node*> pot = root->children;
+
+
+    QRectF rect = getSceneDraw(pt.x(), pt.y());
+    Node* collider = root;
+
+    // TODO: rewrite this to avoid goto
+loop:
+    for (Node* n : pot)
+    {
+        if (n == this)
+            continue;
+
+        if (rectsCollide(n->getSceneDraw(),
+                         rect))
+        {
+            collider = n;
+            pot = collider->children;
+            goto loop; // repeat loop with the new potential list
+        }
+    }
+
+    return collider;
+}
 
 ///////////////
 /// Helpers ///

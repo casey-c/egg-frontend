@@ -90,7 +90,9 @@ private:
     // Selection
     bool selected;
 
-    // New collision
+    // Change parent
+    bool ghost;
+    Node* determineNewParent(QPointF pt);
 
     ///////////////
     /// Methods ///

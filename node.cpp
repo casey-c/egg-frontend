@@ -26,6 +26,7 @@ void printPt(const QString &s, const QPointF &pt);
 void printRect(const QString &s, const QRectF &r);
 void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
 QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget);
+bool pointInRect(const QPointF &pt, const QRectF &rect);
 
 // Helper struct
 struct NodePotential
@@ -60,7 +61,8 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     highlighted(false),
     mouseDown(false),
     mouseOffset(0, 0),
-    selected(false)
+    selected(false),
+    ghost(false)
 {
     // Drop shadow on click and drag
     shadow = new QGraphicsDropShadowEffect(this);
@@ -120,7 +122,8 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     mouseDown(false),
     mouseOffset(0, 0),
     letter(s),
-    selected(false)
+    selected(false),
+    ghost(false)
 {
     shadow = new QGraphicsDropShadowEffect(this);
     shadow->setEnabled(false);
@@ -286,6 +289,11 @@ void Node::paint(QPainter* painter,
             painter->setBrush(QBrush(gradDefault));
     }
 
+    if (ghost)
+        setOpacity(0.5);
+    else
+        setOpacity(1.0);
+
     painter->drawRoundedRect(drawBox, qreal(BORDER_RADIUS), qreal(BORDER_RADIUS));
 
     if ( isStatement() )
@@ -403,13 +411,29 @@ bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
             Node* changed = (*itn);
             QRectF changedRect = (*itr);
 
+            // Compare a changed node against each non changed node
             for (Node* n : parent->children)
             {
-                // The actual collision check
-                if (!changedNodes.contains(n) &&
-                     rectsCollide(n->getSceneCollisionBox(),
-                                  changed->toCollision(changedRect)))
-                    return false;
+                if (!changedNodes.contains(n) )
+                {
+                    // Both statements, so only compare drawboxes (allows
+                    // statements to be closer together visually)
+                    if (changed->isStatement() && n->isStatement())
+                    {
+                        if (rectsCollide(n->getSceneDraw(),
+                                         changedRect))
+                            return false;
+                    }
+                    else
+                    {
+                        // Compare the collision boxes, since at least one of
+                        // the nodes to compare is a cut
+                        if (rectsCollide(n->getSceneCollisionBox(),
+                                         changed->toCollision(changedRect)))
+                            return false;
+
+                    }
+                }
             }
 
             // Store
@@ -422,7 +446,7 @@ bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
             alteredDraws.append(changedRect);
         }
 
-        // Edge case
+        // Quit early
         if (parent->isRoot())
             break;
 
@@ -551,6 +575,9 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     if (event->buttons() & Qt::LeftButton)
     {
+        if (event->modifiers() & Qt::AltModifier)
+            ghost = true;
+
         mouseOffset = event->pos();
         shadow->setEnabled(true);
         mouseDown = true;
@@ -564,6 +591,7 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     mouseDown = false;
     shadow->setEnabled(false);
+    ghost = false;
     update();
 
     QGraphicsObject::mouseReleaseEvent(event);
@@ -619,10 +647,22 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             return;
         }
 
+        canvas->clearBounds();
+
         // Moved a lil bit at least, so lets check it
         for (QPointF pt : bloom)
         {
             // Check
+            if (ghost)
+            {
+                Node* collider = determineNewParent(event->scenePos());
+                canvas->addBlueBound(collider->getSceneDraw());
+                for (Node* n : sel)
+                    n->moveBy(pt.x(), pt.y());
+                if (sel.size() == 1)
+                    canvas->clearSelection();
+                return;
+            }
             if (checkPotential(sel, pt))
             {
                 for (Node* n : sel)
@@ -638,6 +678,34 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     }
 }
 
+/////////////////////////////
+/// Change parent / ghost ///
+/////////////////////////////
+
+Node* Node::determineNewParent(QPointF pt)
+{
+    Node* root = canvas->getRoot();
+    QList<Node*> pot = root->children;
+
+    Node* collider = root;
+
+    // TODO: rewrite this to avoid goto
+loop:
+    for (Node* n : pot)
+    {
+        if (n == this)
+            continue;
+
+        if (pointInRect(pt, n->getSceneDraw()))
+        {
+            collider = n;
+            pot = collider->children;
+            goto loop; // repeat loop with the new potential list
+        }
+    }
+
+    return collider;
+}
 
 ///////////////
 /// Helpers ///
@@ -796,6 +864,16 @@ QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget)
         relBloom.append(QPointF(pt.x() - scenePos.x(),  pt.y() - scenePos.y()));
 
     return relBloom;
+}
+
+
+/*
+ * Pt and rect should be in the same coordinate system
+ */
+bool pointInRect(const QPointF &pt, const QRectF &rect)
+{
+    return (pt.x() > rect.left() && pt.x() < rect.right() &&
+            pt.y() > rect.top() && pt.y() < rect.bottom());
 }
 
 

@@ -29,6 +29,8 @@ public:
     QList<Node*> getSelectedNodes();
     QList<Node*> selectionIncluding(Node* n);
     bool hasAnySelectedNodes();
+
+    Node* getRoot() { return root; }
 private:
     //////////////
     /// Fields ///

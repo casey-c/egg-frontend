@@ -28,12 +28,7 @@ void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
 QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget);
 bool pointInRect(const QPointF &pt, const QRectF &rect);
 
-// Helper struct
-struct NodePotential
-{
-    Node* node;
-    QRectF rect;
-};
+QList<QPointF> constructAddBloom(QPointF scenePos);
 
 // Static var intitial declaration
 int Node::globalID = 0;
@@ -875,6 +870,47 @@ bool pointInRect(const QPointF &pt, const QRectF &rect)
     return (pt.x() > rect.left() && pt.x() < rect.right() &&
             pt.y() > rect.top() && pt.y() < rect.bottom());
 }
+
+/*
+ * A second bloom. More naive (no distance checking or sorting), but adds a few
+ * more points. Additionally, the returned QList will always be size 9, never
+ * empty like the other bloom may return if no movement.
+ *
+ * scenePos is unsnapped and in scene coords, and is the top left point of a
+ * newly added drawbox.
+ *
+ * The points in this bloom are ordered as follows:
+ *
+ *     1 2 4
+ *     3 0 6     where 0 is the initial snapped point
+ *     5 7 8     and other points are placed GRID_SPACING apart
+ *
+ * TODO: rework things so we can use just one bloom, since they're basically
+ * identical anyway.
+ */
+QList<QPointF> constructAddBloom(QPointF scenePos)
+{
+    QPointF snapped = snapPoint(scenePos);
+    QList<QPointF> bloom;
+
+    bloom.append(snapped);
+    bloom.append(QPointF(snapped.x() - qreal(GRID_SPACING), snapped.y() - qreal(GRID_SPACING)));
+    bloom.append(QPointF(snapped.x(),  snapped.y() - qreal(GRID_SPACING)));
+
+    bloom.append(QPointF(snapped.x() - qreal(GRID_SPACING), snapped.y()));
+    bloom.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y() - qreal(GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(GRID_SPACING), snapped.y() + qreal(GRID_SPACING)));
+
+    bloom.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y()));
+    bloom.append(QPointF(snapped.x(),  snapped.y() + qreal(GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y() + qreal(GRID_SPACING)));
+
+    return bloom;
+}
+
+
+
+
 
 
 

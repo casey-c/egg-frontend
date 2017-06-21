@@ -26,6 +26,7 @@ void printPt(const QString &s, const QPointF &pt);
 void printRect(const QString &s, const QRectF &r);
 void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
 QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget);
+bool pointInRect(const QPointF &pt, const QRectF &rect);
 
 // Helper struct
 struct NodePotential
@@ -638,7 +639,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             // Check
             if (ghost)
             {
-                Node* collider = determineNewParent(pt);
+                Node* collider = determineNewParent(event->scenePos());
                 canvas->addBlueBound(collider->getSceneDraw());
                 for (Node* n : sel)
                     n->moveBy(pt.x(), pt.y());
@@ -670,8 +671,6 @@ Node* Node::determineNewParent(QPointF pt)
     Node* root = canvas->getRoot();
     QList<Node*> pot = root->children;
 
-
-    QRectF rect = getSceneDraw(pt.x(), pt.y());
     Node* collider = root;
 
     // TODO: rewrite this to avoid goto
@@ -681,8 +680,7 @@ loop:
         if (n == this)
             continue;
 
-        if (rectsCollide(n->getSceneDraw(),
-                         rect))
+        if (pointInRect(pt, n->getSceneDraw()))
         {
             collider = n;
             pot = collider->children;
@@ -850,6 +848,16 @@ QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget)
         relBloom.append(QPointF(pt.x() - scenePos.x(),  pt.y() - scenePos.y()));
 
     return relBloom;
+}
+
+
+/*
+ * Pt and rect should be in the same coordinate system
+ */
+bool pointInRect(const QPointF &pt, const QRectF &rect)
+{
+    return (pt.x() > rect.left() && pt.x() < rect.right() &&
+            pt.y() > rect.top() && pt.y() < rect.bottom());
 }
 
 

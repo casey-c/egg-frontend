@@ -411,13 +411,29 @@ bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
             Node* changed = (*itn);
             QRectF changedRect = (*itr);
 
+            // Compare a changed node against each non changed node
             for (Node* n : parent->children)
             {
-                // The actual collision check
-                if (!changedNodes.contains(n) &&
-                     rectsCollide(n->getSceneCollisionBox(),
-                                  changed->toCollision(changedRect)))
-                    return false;
+                if (!changedNodes.contains(n) )
+                {
+                    // Both statements, so only compare drawboxes (allows
+                    // statements to be closer together visually)
+                    if (changed->isStatement() && n->isStatement())
+                    {
+                        if (rectsCollide(n->getSceneDraw(),
+                                         changedRect))
+                            return false;
+                    }
+                    else
+                    {
+                        // Compare the collision boxes, since at least one of
+                        // the nodes to compare is a cut
+                        if (rectsCollide(n->getSceneCollisionBox(),
+                                         changed->toCollision(changedRect)))
+                            return false;
+
+                    }
+                }
             }
 
             // Store
@@ -430,7 +446,7 @@ bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
             alteredDraws.append(changedRect);
         }
 
-        // Edge case
+        // Quit early
         if (parent->isRoot())
             break;
 

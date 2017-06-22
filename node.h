@@ -94,6 +94,9 @@ private:
     bool ghost;
     Node* determineNewParent(QPointF pt);
 
+    // Add
+    QPointF findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isStatement = false);
+
     ///////////////
     /// Methods ///
     ///////////////

@@ -28,7 +28,7 @@ void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
 QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget);
 bool pointInRect(const QPointF &pt, const QRectF &rect);
 
-QList<QPointF> constructAddBloom(QPointF scenePos);
+QList<QPointF> constructAddBloom(const QPointF &scenePos);
 
 // Static var intitial declaration
 int Node::globalID = 0;
@@ -173,10 +173,19 @@ Node* Node::addChildCut(QPointF pt)
 
 Node* Node::addChildStatement(QPointF pt, QString t)
 {
+
+    //QPointF adjTopLeft(pt.x() - qreal(STATEMENT_SIZE / 2),
+                       //pt.y() - qreal(STATEMENT_SIZE / 2));
+    QList<QPointF> bloom = constructAddBloom(pt);
+
+    QPointF finalPoint = findPoint(bloom,
+                                   qreal(STATEMENT_SIZE),
+                                   qreal(STATEMENT_SIZE));
+    printPt("final", finalPoint);
+
     Node* newChild = new Node(canvas, this, t, mapFromScene(pt));
     children.append(newChild);
     newChild->setParentItem(this);
-
     return newChild;
 }
 
@@ -888,7 +897,7 @@ bool pointInRect(const QPointF &pt, const QRectF &rect)
  * TODO: rework things so we can use just one bloom, since they're basically
  * identical anyway.
  */
-QList<QPointF> constructAddBloom(QPointF scenePos)
+QList<QPointF> constructAddBloom(const QPointF &scenePos)
 {
     QPointF snapped = snapPoint(scenePos);
     QList<QPointF> bloom;
@@ -906,6 +915,126 @@ QList<QPointF> constructAddBloom(QPointF scenePos)
     bloom.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y() + qreal(GRID_SPACING)));
 
     return bloom;
+}
+
+/*
+ * Tries to find a valid point for the add function. Bloom should be non-empty.
+ *
+ * If no valid point found, returns the first point in the bloom (which should
+ * be the snapped mousePos in scene coords if the bloom was created
+ * successfully).
+ *
+ * Otherwise, this function returns a valid topLeft position in scene coords
+ * such that a node of size w by h would have:
+ *   1. no collisions with direct siblings
+ *   2. no growing of the parent
+ *
+ * TODO: extend to percolate upwards, just in case we have multiple points that
+ * avoid collision with siblings, and potentially one (or more or none) would
+ * cause a collision when the parent, grandparent, etc. grew.
+ *
+ * NOTE: this function is called on/by the parent of a new node. So the new
+ * node's width and height are the params, and (this) is the parent of such a
+ * node.
+ */
+QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isStatement)
+{
+    Q_UNUSED(isStatement)
+
+    QList<QPointF> collOnly;
+    QList<QPointF> growOnly;
+
+    canvas->clearBounds();
+
+    for (QPointF pt : bloom)
+    {
+        bool collOkay = true;
+        bool growOkay = true; // TODO: actual checking logic
+
+        QPointF bottomRight(pt.x() + w, pt.y() +h);
+        QRectF potDraw = QRectF(pt, bottomRight);
+        QRectF potColl = toCollision(potDraw);
+
+        canvas->addBlackDot(pt);
+
+
+        // Collision Check
+        for (Node* n : children)
+        {
+            // TODO: allow statements to be closer
+
+            //QRectF otherColl;
+            //QRectF newColl;
+            //if (n->isStatement() && isStatement)
+            //{
+                //otherColl = n->getSceneDraw();
+                //newColl = potDraw;
+            //}
+            //else
+            //{
+                //otherColl = n->getSceneCollisionBox();
+                //newColl = potColl;
+            //}
+
+            if (rectsCollide(potColl, n->getSceneCollisionBox()))
+            {
+                qDebug() << "found a collision";
+                collOkay = false;
+                break;
+            }
+            else
+            {
+                qDebug() << "no collision here";
+            }
+        }
+        qDebug() << "--- end check of collision ---";
+
+        // TODO: growth check
+        QRectF sceneDraw = getSceneDraw();
+
+        printPt("potDraw tl", potDraw.topLeft());
+        printPt("sceneDraw tl", sceneDraw.topLeft());
+        printPt("potDraw br", potDraw.bottomRight());
+        printPt("sceneDraw br", sceneDraw.bottomRight());
+
+        qreal minX = qMin(potDraw.left() - qreal(GRID_SPACING), sceneDraw.left());
+        qreal minY = qMin(potDraw.top() - qreal(GRID_SPACING), sceneDraw.top());
+        qreal maxX = qMax(potDraw.right() + qreal(GRID_SPACING), sceneDraw.right());
+        qreal maxY = qMax(potDraw.bottom() + qreal(GRID_SPACING), sceneDraw.bottom());
+
+        if ( minX != sceneDraw.left() ||
+             minY != sceneDraw.top() ||
+             maxX != sceneDraw.right() ||
+             maxY != sceneDraw.bottom() )
+        {
+            qDebug() << "Parent changed size";
+            growOkay = false;
+            canvas->addRedBound(potDraw);
+        }
+        else
+        {
+            qDebug() << "parent ok";
+            canvas->addBlueBound(potDraw);
+        }
+
+
+        /*
+        if (collOkay)
+            canvas->addGreenBound(potColl);
+        else
+            canvas->addRedBound(potColl);
+        */
+
+        if (collOkay && growOkay)
+            return pt;
+        else if (collOkay)
+            collOnly.append(pt);
+        else if (growOkay)
+            growOnly.append(pt);
+    }
+
+    // Nothing worked, so return snapped
+    return bloom.first();
 }
 
 

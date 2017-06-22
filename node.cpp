@@ -183,7 +183,7 @@ Node* Node::addChildStatement(QPointF pt, QString t)
                                    qreal(STATEMENT_SIZE));
     printPt("final", finalPoint);
 
-    Node* newChild = new Node(canvas, this, t, mapFromScene(pt));
+    Node* newChild = new Node(canvas, this, t, mapFromScene(finalPoint));
     children.append(newChild);
     newChild->setParentItem(this);
     return newChild;
@@ -894,8 +894,17 @@ bool pointInRect(const QPointF &pt, const QRectF &rect)
  *     3 0 6     where 0 is the initial snapped point
  *     5 7 8     and other points are placed GRID_SPACING apart
  *
+ *   9  10 12 14 16
+ *   11 1  2  4  18
+ *   13 3  0  6  20
+ *   15 5  7  8  22
+ *   17 19 21 23 24
+ *
  * TODO: rework things so we can use just one bloom, since they're basically
  * identical anyway.
+ *
+ * TODO: come up with a smarter spiraling out algorithm so everything is cleaner
+ * and not hardcoded
  */
 QList<QPointF> constructAddBloom(const QPointF &scenePos)
 {
@@ -913,6 +922,30 @@ QList<QPointF> constructAddBloom(const QPointF &scenePos)
     bloom.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y()));
     bloom.append(QPointF(snapped.x(),  snapped.y() + qreal(GRID_SPACING)));
     bloom.append(QPointF(snapped.x() + qreal(GRID_SPACING), snapped.y() + qreal(GRID_SPACING)));
+
+    // New 16 (starts at 9)
+    bloom.append(QPointF(snapped.x() - qreal(2 * GRID_SPACING), snapped.y() - qreal(2 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(1 * GRID_SPACING), snapped.y() - qreal(2 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(2 * GRID_SPACING), snapped.y() - qreal(1 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(0 * GRID_SPACING), snapped.y() - qreal(2 * GRID_SPACING)));
+
+    // 13
+    bloom.append(QPointF(snapped.x() - qreal(2 * GRID_SPACING), snapped.y() - qreal(0 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(1 * GRID_SPACING), snapped.y() - qreal(2 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(2 * GRID_SPACING), snapped.y() + qreal(1 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(2 * GRID_SPACING), snapped.y() - qreal(2 * GRID_SPACING)));
+
+    // 17
+    bloom.append(QPointF(snapped.x() - qreal(2 * GRID_SPACING), snapped.y() + qreal(2 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(2 * GRID_SPACING), snapped.y() - qreal(1 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(1 * GRID_SPACING), snapped.y() + qreal(2 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(2 * GRID_SPACING), snapped.y() - qreal(0 * GRID_SPACING)));
+
+    // 21
+    bloom.append(QPointF(snapped.x() - qreal(0 * GRID_SPACING), snapped.y() + qreal(2 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(2 * GRID_SPACING), snapped.y() + qreal(1 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(1 * GRID_SPACING), snapped.y() + qreal(2 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(2 * GRID_SPACING), snapped.y() + qreal(2 * GRID_SPACING)));
 
     return bloom;
 }

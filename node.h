@@ -45,6 +45,7 @@ public:
     Node* getChild();
 
     // Selection
+    void toggleSelection();
     void selectThis();
     void deselectThis();
     void selectAllKids();
@@ -105,8 +106,6 @@ private:
     Node(Canvas* can, Node* par, NodeType t, QPointF pt);
     Node(Canvas* can, Node* par, QString s, QPointF pt);
 
-    // Selection
-    void toggleSelection();
 
     // Graphics
     QRectF boundingRect() const override;

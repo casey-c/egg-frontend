@@ -3,8 +3,12 @@
 #include <QKeyEvent>
 #include <QDebug>
 
+#define SEL_BOX_Z 10
+
 Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent),
+    mouseShiftPress(false),
+    noMouseMovement(false),
     showBounds(false)
 {
     scene = new QGraphicsScene(this);
@@ -20,6 +24,11 @@ Canvas::Canvas(QWidget* parent) :
 
     root = Node::makeRoot(this);
     highlighted = root;
+
+    // Selection box
+    selBox = scene->addRect(QRectF(QPointF(0,0), QSizeF(0,0)));
+    selBox->setZValue(SEL_BOX_Z);
+    selBox->setVisible(false);
 }
 
 void Canvas::drawBackground(QPainter* painter, const QRectF &rect)
@@ -88,7 +97,27 @@ void Canvas::keyPressEvent(QKeyEvent* event)
 
 void Canvas::mouseMoveEvent(QMouseEvent* event)
 {
-    lastMousePos = mapToScene(event->pos());
+    if (mouseShiftPress)
+    {
+        QPointF pt = mapToScene(event->pos());
+
+        qreal minX = qMin(pt.x(), selStart.x());
+        qreal minY = qMin(pt.y(), selStart.y());
+
+        qreal width = qAbs(pt.x() - selStart.x());
+        qreal height = qAbs(pt.y() - selStart.y());
+
+        if (width > 2 || height > 2)
+            noMouseMovement = false;
+
+        selBox->setRect(QRectF(QPointF(minX, minY), QSize(width, height)));
+
+        selBox->setVisible(true);
+    }
+    else
+    {
+        lastMousePos = mapToScene(event->pos());
+    }
     QGraphicsView::mouseMoveEvent(event);
 }
 
@@ -97,7 +126,37 @@ void Canvas::mousePressEvent(QMouseEvent* event)
     if (highlighted == root)
         clearSelection();
 
-    QGraphicsView::mousePressEvent(event);
+    if (event->modifiers() & Qt::ShiftModifier)
+    {
+        mouseShiftPress = true;
+        noMouseMovement = true;
+        selStart = mapToScene(event->pos());
+    }
+    else
+        QGraphicsView::mousePressEvent(event);
+}
+
+void Canvas::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (mouseShiftPress)
+    {
+        mouseShiftPress = false;
+        selBox->setVisible(false);
+
+        if (noMouseMovement)
+        {
+            qDebug() << "No mouse movement, handle as click";
+            if (!highlighted->isRoot())
+                highlighted->toggleSelection();
+        }
+        else
+        {
+            qDebug() << "Need to determine selection";
+        }
+
+    }
+
+    QGraphicsView::mouseReleaseEvent(event);
 }
 
 void Canvas::setHighlight(Node* node)

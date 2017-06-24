@@ -43,16 +43,22 @@ private:
 
     QGraphicsScene* scene;
 
+    QGraphicsRectItem* selBox;
+    QPointF selStart;
+    bool mouseShiftPress;
+    bool noMouseMovement;
+
     ///////////////
     /// Methods ///
     ///////////////
 
     // User input
     void keyPressEvent(QKeyEvent* event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
     void drawBackground(QPainter* painter,
                         const QRectF &rect) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
 
     // Add
     void addCut();

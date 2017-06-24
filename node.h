@@ -49,6 +49,8 @@ public:
     void selectThis();
     void deselectThis();
     void selectAllKids();
+
+    void setSelectionFromBox(QRectF selBox);
 private:
 
     //////////////

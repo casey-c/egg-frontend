@@ -107,6 +107,7 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
         qreal width = qAbs(pt.x() - selStart.x());
         qreal height = qAbs(pt.y() - selStart.y());
 
+        // Give a little leeway for clicking
         if (width > 2 || height > 2)
             noMouseMovement = false;
 
@@ -152,6 +153,7 @@ void Canvas::mouseReleaseEvent(QMouseEvent* event)
         else
         {
             qDebug() << "Need to determine selection";
+            root->setSelectionFromBox(selBox->rect());
         }
 
     }

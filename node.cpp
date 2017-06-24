@@ -27,8 +27,8 @@ void printRect(const QString &s, const QRectF &r);
 void printMinMax(qreal minX, qreal minY, qreal maxX, qreal maxY);
 QList<QPointF> constructBloom(QPointF scenePos, QPointF sceneTarget);
 bool pointInRect(const QPointF &pt, const QRectF &rect);
-
 QList<QPointF> constructAddBloom(const QPointF &scenePos);
+bool rectSurroundedBy(QRectF inside, QRectF outside);
 
 // Static var intitial declaration
 int Node::globalID = 0;
@@ -249,6 +249,48 @@ void Node::toggleSelection()
         canvas->deselectNode(this);
     else
         canvas->selectNode(this);
+}
+
+void Node::setSelectionFromBox(QRectF selBox)
+{
+    // Determine if I collide with the selBox
+    bool collidesWithSelBox = false;
+    if (isRoot())
+        collidesWithSelBox = true;
+    else
+    {
+        collidesWithSelBox = rectsCollide(getSceneDraw(),
+                                          selBox);
+    }
+
+    // No collision at all, so quit early
+    if (!collidesWithSelBox)
+    {
+        qDebug() << "I don't collide at all";
+        return;
+    }
+
+    // If I collide, check if I am surrounded
+    bool surrounded;
+    if (isRoot())
+        surrounded = false;
+    else
+        surrounded = rectSurroundedBy(getSceneDraw(), selBox);
+
+    qDebug() << "Surrounded?: " << surrounded;
+
+    if (surrounded)
+    {
+        qDebug() << "I am surrounded, selecting this";
+        canvas->selectNode(this);
+        return;
+    }
+
+    // Recurse on kids
+    qDebug() << "I'm not surrounded, but I collide, so checking my kids";
+
+    for (Node* child : children)
+        child->setSelectionFromBox(selBox);
 }
 
 
@@ -1068,6 +1110,15 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
 
     // Nothing worked, so return snapped
     return bloom.first();
+}
+
+// Assumed that they collide & share the same coord system
+bool rectSurroundedBy(QRectF inside, QRectF outside)
+{
+    return  inside.left() >= outside.left() &&
+            inside.top() >= outside.top() &&
+            inside.right() <= outside.right() &&
+            inside.bottom() <= outside.bottom();
 }
 
 

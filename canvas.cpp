@@ -124,9 +124,6 @@ void Canvas::mouseMoveEvent(QMouseEvent* event)
 
 void Canvas::mousePressEvent(QMouseEvent* event)
 {
-    if (highlighted == root)
-        clearSelection();
-
     if (event->modifiers() & Qt::ShiftModifier)
     {
         mouseShiftPress = true;
@@ -134,7 +131,12 @@ void Canvas::mousePressEvent(QMouseEvent* event)
         selStart = mapToScene(event->pos());
     }
     else
+    {
+        if (highlighted == root)
+            clearSelection();
+
         QGraphicsView::mousePressEvent(event);
+    }
 }
 
 void Canvas::mouseReleaseEvent(QMouseEvent* event)

@@ -21,7 +21,7 @@ class Node : public QGraphicsObject
 {
 public:
     static Node* makeRoot(Canvas* can);
-    ~Node() {}
+    ~Node();
 
     // Add
     Node* addChildCut(QPointF pt);

@@ -162,6 +162,17 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     font.setPixelSize(GRID_SPACING * 2 - 6);
 }
 
+// Destructor
+Node::~Node()
+{
+    qDebug() << "Calling destructor";
+    if (parent != nullptr)
+        parent->children.removeOne(this);
+
+    for (Node* child : children)
+        delete child;
+}
+
 Node* Node::addChildCut(QPointF pt)
 {
     Node* newChild = new Node(canvas, this, Cut, mapFromScene(pt));
@@ -629,8 +640,10 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
         mouseDown = true;
         update();
     }
-    //else if (event->buttons() & Qt::RightButton)
-        //toggleSelection();
+    else if (event->buttons() & Qt::RightButton)
+    {
+        canvas->removeFromScene(this);
+    }
 }
 
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)

@@ -30,6 +30,8 @@ public:
     QList<Node*> selectionIncluding(Node* n);
     bool hasAnySelectedNodes();
 
+    void removeFromScene(Node* n);
+
     Node* getRoot() { return root; }
 private:
     //////////////

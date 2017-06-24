@@ -319,3 +319,14 @@ bool Canvas::hasAnySelectedNodes()
 {
     return !selectedNodes.empty();
 }
+
+
+void Canvas::removeFromScene(Node* n)
+{
+    if (n->isRoot())
+        return;
+
+    scene->removeItem(n);
+    highlighted = n->getParent();
+    delete n;
+}

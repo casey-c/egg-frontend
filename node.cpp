@@ -629,8 +629,8 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
         mouseDown = true;
         update();
     }
-    else if (event->buttons() & Qt::RightButton)
-        toggleSelection();
+    //else if (event->buttons() & Qt::RightButton)
+        //toggleSelection();
 }
 
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)

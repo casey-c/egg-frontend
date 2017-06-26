@@ -77,8 +77,12 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
         setCacheMode(DeviceCoordinateCache);
         setAcceptHoverEvents(true);
 
-        drawBox = QRectF( QPointF(0, 0), QPointF(qreal(EMPTY_CUT_SIZE),
-                                                 qreal(EMPTY_CUT_SIZE)) );
+        //drawBox = QRectF( QPointF(0, 0), QPointF(qreal(EMPTY_CUT_SIZE),
+                                                 //qreal(EMPTY_CUT_SIZE)) );
+        QPointF tl = mapFromScene(pt);
+        QPointF br(tl.x() + qreal(EMPTY_CUT_SIZE),
+                   tl.y() + qreal(EMPTY_CUT_SIZE));
+        drawBox = QRectF(tl, br);
         //setPos(snapPoint(pt));
     }
 
@@ -130,6 +134,8 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     setCacheMode(DeviceCoordinateCache);
     setAcceptHoverEvents(true);
 
+    //drawBox = QRectF( QPointF(0, 0), QPointF(qreal(STATEMENT_SIZE),
+                                             //qreal(STATEMENT_SIZE)));
     drawBox = QRectF( QPointF(0, 0), QPointF(qreal(STATEMENT_SIZE),
                                              qreal(STATEMENT_SIZE)));
     //setPos(snapPoint(pt));
@@ -183,7 +189,7 @@ Node* Node::addChildCut(QPointF pt)
 
     for (QPointF b : bloom)
     {
-        canvas->addBlackDot(b);
+        //canvas->addBlackDot(b);
         //printPt("b", b);
     }
     qDebug() << "---";
@@ -199,10 +205,7 @@ Node* Node::addChildCut(QPointF pt)
     newChild->setParentItem(this);
     newChild->setOpacity(0.5);
     //newChild->setPos(mapFromScene(finalPoint));
-    newChild->setPos(mapFromScene(finalPoint));
-    //newChild->setPos(mapFromScene(QPointF(finalPoint.x() - qreal(EMPTY_CUT_SIZE / 2),
-                                          //finalPoint.y() - qreal(EMPTY_CUT_SIZE / 2))));
-
+    updateFromChildAdd();
     return newChild;
 }
 
@@ -224,6 +227,7 @@ Node* Node::addChildStatement(QPointF pt, QString t)
     newChild->setPos(mapFromScene(finalPoint));
     //newChild->setPos(mapFromScene(QPointF(finalPoint.x() - qreal(STATEMENT_SIZE / 2),
                                           //finalPoint.y() - qreal(STATEMENT_SIZE / 2))));
+    updateFromChildAdd();
     return newChild;
 }
 
@@ -374,9 +378,9 @@ void Node::paint(QPainter* painter,
     }
 
     if (ghost)
-        setOpacity(0.25);
-    else
         setOpacity(0.5);
+    else
+        setOpacity(1.0);
 
     painter->drawRoundedRect(drawBox, qreal(BORDER_RADIUS), qreal(BORDER_RADIUS));
 
@@ -436,6 +440,35 @@ QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
 QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
 {
     return toDraw(getSceneCollisionBox(deltaX, deltaY));
+}
+
+/*
+ * Resizes the draw box because we received a new child
+ *
+ * This function will percolate up the tree.
+ */
+void Node::updateFromChildAdd()
+{
+    if (isRoot())
+        return;
+
+    //QRectF rect = predictMySceneDraw(QList<Node*>(), QList<QRectF>());
+
+    QRectF s = predictMySceneDraw(QList<Node*>(), QList<QRectF>());
+    canvas->addRedBound(s);
+
+    QRectF mapped(mapFromScene(s.topLeft()), mapFromScene(s.bottomRight()));
+    setDrawBoxFromPotential(mapped);
+
+
+    //for (Node* c : children)
+    //{
+        //canvas->addBlueBound(c->getSceneDraw());
+    //}
+
+    //canvas->addBlueBound(rect);
+    //setDrawBoxFromPotential(rect);
+    parent->updateFromChildAdd();
 }
 
 //////////////////////////
@@ -1131,7 +1164,7 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
         }
         if (collOkay)
         {
-            canvas->addRedBound(potColl);
+            //canvas->addRedBound(potColl);
         }
 
         // TODO: growth check
@@ -1156,12 +1189,12 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
             {
                 qDebug() << "Parent changed size";
                 growOkay = false;
-                canvas->addRedBound(potDraw);
+                //canvas->addRedBound(potDraw);
             }
             else
             {
                 qDebug() << "parent ok";
-                canvas->addBlueBound(potDraw);
+                //canvas->addBlueBound(potDraw);
             }
         }
 

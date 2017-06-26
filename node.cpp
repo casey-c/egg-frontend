@@ -79,7 +79,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
 
         //drawBox = QRectF( QPointF(0, 0), QPointF(qreal(EMPTY_CUT_SIZE),
                                                  //qreal(EMPTY_CUT_SIZE)) );
-        QPointF tl = mapFromScene(pt);
+        QPointF tl = parent->mapFromScene(pt);
         QPointF br(tl.x() + qreal(EMPTY_CUT_SIZE),
                    tl.y() + qreal(EMPTY_CUT_SIZE));
         drawBox = QRectF(tl, br);

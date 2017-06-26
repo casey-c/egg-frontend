@@ -293,79 +293,23 @@ void Node::toggleSelection()
         canvas->selectNode(this);
 }
 
-void Node::setSelectionFromBox(QRectF selBox)
-{
-#if 0
-    // Determine if I collide with the selBox
-    //bool collidesWithSelBox = false;
-    //if (isRoot())
-        //collidesWithSelBox = true;
-    //else
-    //{
-        //collidesWithSelBox = rectsCollide(getSceneDraw(),
-                                          //selBox);
-    //}
-
-    // No collision at all, so quit early
-    //if (!collidesWithSelBox)
-    //{
-        //qDebug() << "I don't collide at all";
-        //return;
-    //}
-
-    // If I collide, check if I am surrounded
-    //bool surrounded;
-    //if (isRoot())
-        //surrounded = false;
-    //else
-        //surrounded = rectSurroundedBy(getSceneDraw(), selBox);
-
-    //qDebug() << "Surrounded?: " << surrounded;
-
-    //if (surrounded)
-    //{
-        //qDebug() << "I am surrounded, selecting this";
-        //canvas->selectNode(this);
-        //return;
-    //}
-
-    // Recurse on kids
-    QList<Node*> queue;
-    queue.push(this);
-    while (queue.empty())
-    {
-        Node* curr = queue.first();
-        queue.pop_front();
-
-        if (curr->isRoot())
-        {
-            for (Node* c : curr->children)
-                queue.append(c);
-            continue;
-        }
-
-        if (!curr->isRoot() && !rectsCollide(curr->getSceneDraw(), selBox))
-            continue;
-
-        if (curr->isRoot() || !rectSurroundedBy(curr->getSceneDraw(), selBox))
-            canvas->selectNode(curr);
-        else
-            continue;
-
-        for (Node* c : curr->children)
-            queue.push(c);
-    }
-    //qDebug() << "I'm not surrounded, but I collide, so checking my kids";
-
-    //for (Node* child : children)
-        //child->setSelectionFromBox(selBox);
-#endif
-}
-
 /*
- * static version of original
+ * (Static)
+ * Working off a root node, (though technically can be any node), try and find
+ * all decendents that are completely surrounded by the given selection box. All
+ * these nodes then are selected automatically.
+ *
+ * If a node's drawBox is not completely surrounded, its children may have a
+ * chance to be surrounded if it at least collides with the selBox. However, a
+ * restriction is in place such that nodes closer to root have a higher priority
+ * for selection than those deeper down. This will ensure that older nodes that
+ * are closer to root aren't deselected in favor of decendents.
+ *
+ * There are some cases where it's still seemingly unintuitive, where selection
+ * comes down to children list order, but these are unavoidable due to the
+ * requirement that all selected nodes must share the same parent.
  */
-void Node::setSel(Node* root, QRectF selBox)
+void Node::setSelectionFromBox(Node* root, QRectF selBox)
 {
     QList<Node*> queue;
     for (Node* c : root->children)

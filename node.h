@@ -50,8 +50,7 @@ public:
     void deselectThis();
     void selectAllKids();
 
-    void setSelectionFromBox(QRectF selBox);
-    static void setSel(Node* root, QRectF selBox);
+    static void setSelectionFromBox(Node* root, QRectF selBox);
 private:
 
     //////////////

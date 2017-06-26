@@ -51,6 +51,7 @@ public:
     void selectAllKids();
 
     void setSelectionFromBox(QRectF selBox);
+    static void setSel(Node* root, QRectF selBox);
 private:
 
     //////////////

@@ -295,44 +295,116 @@ void Node::toggleSelection()
 
 void Node::setSelectionFromBox(QRectF selBox)
 {
+#if 0
     // Determine if I collide with the selBox
-    bool collidesWithSelBox = false;
-    if (isRoot())
-        collidesWithSelBox = true;
-    else
-    {
-        collidesWithSelBox = rectsCollide(getSceneDraw(),
-                                          selBox);
-    }
+    //bool collidesWithSelBox = false;
+    //if (isRoot())
+        //collidesWithSelBox = true;
+    //else
+    //{
+        //collidesWithSelBox = rectsCollide(getSceneDraw(),
+                                          //selBox);
+    //}
 
     // No collision at all, so quit early
-    if (!collidesWithSelBox)
-    {
-        qDebug() << "I don't collide at all";
-        return;
-    }
+    //if (!collidesWithSelBox)
+    //{
+        //qDebug() << "I don't collide at all";
+        //return;
+    //}
 
     // If I collide, check if I am surrounded
-    bool surrounded;
-    if (isRoot())
-        surrounded = false;
-    else
-        surrounded = rectSurroundedBy(getSceneDraw(), selBox);
+    //bool surrounded;
+    //if (isRoot())
+        //surrounded = false;
+    //else
+        //surrounded = rectSurroundedBy(getSceneDraw(), selBox);
 
-    qDebug() << "Surrounded?: " << surrounded;
+    //qDebug() << "Surrounded?: " << surrounded;
 
-    if (surrounded)
-    {
-        qDebug() << "I am surrounded, selecting this";
-        canvas->selectNode(this);
-        return;
-    }
+    //if (surrounded)
+    //{
+        //qDebug() << "I am surrounded, selecting this";
+        //canvas->selectNode(this);
+        //return;
+    //}
 
     // Recurse on kids
-    qDebug() << "I'm not surrounded, but I collide, so checking my kids";
+    QList<Node*> queue;
+    queue.push(this);
+    while (queue.empty())
+    {
+        Node* curr = queue.first();
+        queue.pop_front();
 
-    for (Node* child : children)
-        child->setSelectionFromBox(selBox);
+        if (curr->isRoot())
+        {
+            for (Node* c : curr->children)
+                queue.append(c);
+            continue;
+        }
+
+        if (!curr->isRoot() && !rectsCollide(curr->getSceneDraw(), selBox))
+            continue;
+
+        if (curr->isRoot() || !rectSurroundedBy(curr->getSceneDraw(), selBox))
+            canvas->selectNode(curr);
+        else
+            continue;
+
+        for (Node* c : curr->children)
+            queue.push(c);
+    }
+    //qDebug() << "I'm not surrounded, but I collide, so checking my kids";
+
+    //for (Node* child : children)
+        //child->setSelectionFromBox(selBox);
+#endif
+}
+
+/*
+ * static version of original
+ */
+void Node::setSel(Node* root, QRectF selBox)
+{
+    QList<Node*> queue;
+    for (Node* c : root->children)
+        queue.append(c);
+
+    // For each "level" (i.e. nodes at the same depth that share a parent)
+    while (true)
+    {
+        bool selOnThisLevel = false;
+        QList<Node*> next;
+
+        while (!queue.empty())
+        {
+            Node* curr = queue.first();
+            queue.pop_front();
+
+            // Try and find a node that is surrounded
+            if (rectSurroundedBy(curr->getSceneDraw(), selBox))
+            {
+                selOnThisLevel = true;
+                curr->canvas->selectNode(curr);
+            }
+            // If its not completely surrounded, but is colliding at least, then
+            // its children need to be checked at the next level
+            else if (rectsCollide(curr->getSceneDraw(), selBox))
+                for (Node* c : curr->children)
+                    next.append(c);
+        }
+
+        // Finished this level: if we haven't found any surrounded nodes but
+        // found potential kids, select them for the next check
+        if (!selOnThisLevel && !next.empty())
+        {
+            queue = next;
+            next.clear();
+        }
+        else // Otherwise, we found a surrounded node or no kids, so quit
+            return;
+    }
 }
 
 

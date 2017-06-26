@@ -155,7 +155,8 @@ void Canvas::mouseReleaseEvent(QMouseEvent* event)
         else
         {
             qDebug() << "Need to determine selection";
-            root->setSelectionFromBox(selBox->rect());
+            Node::setSel(root, selBox->rect());
+            //root->setSelectionFromBox(selBox->rect());
         }
 
     }

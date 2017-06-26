@@ -1161,7 +1161,9 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
 {
     Q_UNUSED(isStatement)
 
-    QList<QPointF> collOnly;
+    QList<QPointF> collOnly; // parallel
+    QList<qreal> growSizes;  // to this -- size of the grown parent (heuristic)
+
     QList<QPointF> growOnly;
 
     canvas->clearBounds();
@@ -1172,13 +1174,11 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
         bool collOkay = true;
         bool growOkay = true; // TODO: actual checking logic
 
+        qreal growSize;
+
         QPointF bottomRight(pt.x() + w, pt.y() + h);
         QRectF potDraw = QRectF(pt, bottomRight);
         QRectF potColl = toCollision(potDraw);
-        //canvas->addBlueBound(potDraw);
-
-        //canvas->addBlackDot(pt);
-
 
         qDebug() << "--- Checking point ---";
         // Collision Check
@@ -1201,20 +1201,9 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
 
             if (rectsCollide(potColl, n->getSceneCollisionBox()))
             {
-                //qDebug() << "found a collision";
-                //canvas->addRedBound(potColl);
-                //canvas->addGreenBound(n->getSceneCollisionBox());
                 collOkay = false;
                 break;
             }
-            else
-            {
-                //qDebug() << "no collision here";
-            }
-        }
-        if (collOkay)
-        {
-            //canvas->addRedBound(potColl);
         }
 
         // TODO: growth check
@@ -1239,6 +1228,7 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
             {
                 qDebug() << "Parent changed size";
                 growOkay = false;
+                growSize = (maxX - minX) * (maxY - minY);
                 //canvas->addRedBound(potDraw);
             }
             else
@@ -1254,21 +1244,46 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
             return pt;
         }
         else if (collOkay)
+        {
+            // didn't collide with siblings, but the parent grew
             collOnly.append(pt);
+            growSizes.append(growSize);
+        }
         else if (growOkay)
+        {
+            // collided with siblings, but no parent growth
+            // TODO: i'm thinking this heuristic is not desirable
             growOnly.append(pt);
+        }
     }
     qDebug() << "--- end for ---";
 
     if (!collOnly.empty())
     {
         qDebug() << "Coll only not empty";
-        return collOnly.first();
+        //return collOnly.first();
+        // Heuristic: pick the item that makes the smallest area
+        QList<QPointF>::iterator itp = collOnly.begin();
+        QList<qreal>::iterator ita = growSizes.begin(); // these are parallel
+
+        QPointF ret = collOnly.first();
+        qreal min = growSizes.first();
+
+        for (; itp != collOnly.end(); ++itp, ++ita)
+        {
+            if ((*ita) < min)
+            {
+                ret = (*itp);
+                min = (*ita);
+            }
+        }
+
+        return ret;
     }
     if (!growOnly.empty())
     {
         qDebug() << "Grow only not empty";
-
+        // TODO: get rid of this heuristic (don't think its useful)
     }
     // Nothing worked, so return snapped
     return bloom.first();

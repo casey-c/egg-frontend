@@ -133,7 +133,7 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     drawBox = QRectF( QPointF(0, 0), QPointF(qreal(STATEMENT_SIZE),
                                              qreal(STATEMENT_SIZE)));
     //setPos(snapPoint(pt));
-    setPos(pt);
+    //setPos(pt);
 
     gradDefault = QRadialGradient( drawBox.x() + 3,
                                    drawBox.y() + 3,
@@ -179,12 +179,12 @@ Node* Node::addChildCut(QPointF pt)
     QList<QPointF> bloom = constructAddBloom(pt);
 
     canvas->clearDots();
-    canvas->addBlackDot(bloom.first());
+    //canvas->addBlackDot(bloom.first());
 
     for (QPointF b : bloom)
     {
-        //canvas->addBlackDot(b);
-        printPt("b", b);
+        canvas->addBlackDot(b);
+        //printPt("b", b);
     }
     qDebug() << "---";
 
@@ -198,7 +198,10 @@ Node* Node::addChildCut(QPointF pt)
     children.append(newChild);
     newChild->setParentItem(this);
     newChild->setOpacity(0.5);
+    //newChild->setPos(mapFromScene(finalPoint));
     newChild->setPos(mapFromScene(finalPoint));
+    //newChild->setPos(mapFromScene(QPointF(finalPoint.x() - qreal(EMPTY_CUT_SIZE / 2),
+                                          //finalPoint.y() - qreal(EMPTY_CUT_SIZE / 2))));
 
     return newChild;
 }
@@ -218,6 +221,9 @@ Node* Node::addChildStatement(QPointF pt, QString t)
     Node* newChild = new Node(canvas, this, t, mapFromScene(finalPoint));
     children.append(newChild);
     newChild->setParentItem(this);
+    newChild->setPos(mapFromScene(finalPoint));
+    //newChild->setPos(mapFromScene(QPointF(finalPoint.x() - qreal(STATEMENT_SIZE / 2),
+                                          //finalPoint.y() - qreal(STATEMENT_SIZE / 2))));
     return newChild;
 }
 
@@ -368,9 +374,9 @@ void Node::paint(QPainter* painter,
     }
 
     if (ghost)
-        setOpacity(0.5);
+        setOpacity(0.25);
     else
-        setOpacity(1.0);
+        setOpacity(0.5);
 
     painter->drawRoundedRect(drawBox, qreal(BORDER_RADIUS), qreal(BORDER_RADIUS));
 
@@ -976,6 +982,14 @@ bool pointInRect(const QPointF &pt, const QRectF &rect)
  *   15 5  7  8  22
  *   17 19 21 23 24
  *
+ *  // Added one more upper left just in case
+ *   25 26 28 30 32 34
+ *   27 9  10 12 14 16
+ *   29 11 1  2  4  18
+ *   31 13 3  0  6  20
+ *   33 15 5  7  8  22
+ *   35 17 19 21 23 24
+ *
  * TODO: rework things so we can use just one bloom, since they're basically
  * identical anyway.
  *
@@ -1022,6 +1036,20 @@ QList<QPointF> constructAddBloom(const QPointF &scenePos)
     bloom.append(QPointF(snapped.x() + qreal(2 * GRID_SPACING), snapped.y() + qreal(1 * GRID_SPACING)));
     bloom.append(QPointF(snapped.x() + qreal(1 * GRID_SPACING), snapped.y() + qreal(2 * GRID_SPACING)));
     bloom.append(QPointF(snapped.x() + qreal(2 * GRID_SPACING), snapped.y() + qreal(2 * GRID_SPACING)));
+
+    // 25
+    bloom.append(QPointF(snapped.x() - qreal(3 * GRID_SPACING), snapped.y() - qreal(3 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(2 * GRID_SPACING), snapped.y() - qreal(3 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(3 * GRID_SPACING), snapped.y() - qreal(2 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(1 * GRID_SPACING), snapped.y() - qreal(3 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(3 * GRID_SPACING), snapped.y() - qreal(1 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(0 * GRID_SPACING), snapped.y() - qreal(3 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(3 * GRID_SPACING), snapped.y() - qreal(0 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(1 * GRID_SPACING), snapped.y() - qreal(3 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(3 * GRID_SPACING), snapped.y() + qreal(1 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() + qreal(2 * GRID_SPACING), snapped.y() - qreal(3 * GRID_SPACING)));
+    bloom.append(QPointF(snapped.x() - qreal(3 * GRID_SPACING), snapped.y() + qreal(2 * GRID_SPACING)));
+
 
     return bloom;
 }

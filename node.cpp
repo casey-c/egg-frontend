@@ -174,7 +174,37 @@ Node::~Node()
 {
     qDebug() << "Calling destructor";
     if (parent != nullptr)
+    {
         parent->children.removeOne(this);
+
+        // Update parent
+        if (parent->children.empty())
+        {
+            qDebug() << "Edge case! Need to resize to empty cut";
+            if (parent->isRoot())
+            {
+                qDebug() << "Don't need to resize root";
+            }
+            else
+            {
+                QRectF r = parent->getSceneDraw();
+                qreal cx = r.center().x();
+                qreal cy = r.center().y();
+                QPointF tl(cx - qreal(EMPTY_CUT_SIZE / 2),
+                           cy - qreal(EMPTY_CUT_SIZE / 2));
+                QPointF br(tl.x() + qreal(EMPTY_CUT_SIZE),
+                           tl.y() + qreal(EMPTY_CUT_SIZE));
+
+                QRectF mapped(parent->mapFromScene(tl), parent->mapFromScene(br));
+                parent->setDrawBoxFromPotential(mapped);
+            }
+        }
+        else
+        {
+            QRectF p = parent->predictMySceneDraw(QList<Node*>(), QList<QRectF>());
+            canvas->addRedBound(p);
+        }
+    }
 
     for (Node* child : children)
         delete child;
@@ -626,6 +656,10 @@ bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
  * Returns:
  *   a QRectF of my drawBox, should those altNodes be moved to their altDraw
  *   locations
+ *
+ * NOTE/BUG:
+ *   an empty children list is an unhandled bug -- no way currently to predict
+ *   an empty cut if this is used for updating after a deletion of a node
  */
 QRectF Node::predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws)
 {

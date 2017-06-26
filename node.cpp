@@ -79,7 +79,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
 
         drawBox = QRectF( QPointF(0, 0), QPointF(qreal(EMPTY_CUT_SIZE),
                                                  qreal(EMPTY_CUT_SIZE)) );
-        setPos(snapPoint(pt));
+        //setPos(snapPoint(pt));
     }
 
     // Colors
@@ -132,7 +132,8 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
 
     drawBox = QRectF( QPointF(0, 0), QPointF(qreal(STATEMENT_SIZE),
                                              qreal(STATEMENT_SIZE)));
-    setPos(snapPoint(pt));
+    //setPos(snapPoint(pt));
+    setPos(pt);
 
     gradDefault = QRadialGradient( drawBox.x() + 3,
                                    drawBox.y() + 3,
@@ -175,9 +176,29 @@ Node::~Node()
 
 Node* Node::addChildCut(QPointF pt)
 {
-    Node* newChild = new Node(canvas, this, Cut, mapFromScene(pt));
+    QList<QPointF> bloom = constructAddBloom(pt);
+
+    canvas->clearDots();
+    canvas->addBlackDot(bloom.first());
+
+    for (QPointF b : bloom)
+    {
+        //canvas->addBlackDot(b);
+        printPt("b", b);
+    }
+    qDebug() << "---";
+
+    QPointF finalPoint = findPoint(bloom,
+                                   qreal(EMPTY_CUT_SIZE),
+                                   qreal(EMPTY_CUT_SIZE));
+    //canvas->addBlackDot(finalPoint);
+
+    //Node* newChild = new Node(canvas, this, Cut, mapFromScene(finalPoint));
+    Node* newChild = new Node(canvas, this, Cut, finalPoint);
     children.append(newChild);
     newChild->setParentItem(this);
+    newChild->setOpacity(0.5);
+    newChild->setPos(mapFromScene(finalPoint));
 
     return newChild;
 }
@@ -1034,18 +1055,21 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
 
     canvas->clearBounds();
 
+    qDebug() << "--- Start for ---";
     for (QPointF pt : bloom)
     {
         bool collOkay = true;
         bool growOkay = true; // TODO: actual checking logic
 
-        QPointF bottomRight(pt.x() + w, pt.y() +h);
+        QPointF bottomRight(pt.x() + w, pt.y() + h);
         QRectF potDraw = QRectF(pt, bottomRight);
         QRectF potColl = toCollision(potDraw);
+        //canvas->addBlueBound(potDraw);
 
-        canvas->addBlackDot(pt);
+        //canvas->addBlackDot(pt);
 
 
+        qDebug() << "--- Checking point ---";
         // Collision Check
         for (Node* n : children)
         {
@@ -1066,61 +1090,75 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
 
             if (rectsCollide(potColl, n->getSceneCollisionBox()))
             {
-                qDebug() << "found a collision";
+                //qDebug() << "found a collision";
+                //canvas->addRedBound(potColl);
+                //canvas->addGreenBound(n->getSceneCollisionBox());
                 collOkay = false;
                 break;
             }
             else
             {
-                qDebug() << "no collision here";
+                //qDebug() << "no collision here";
             }
         }
-        qDebug() << "--- end check of collision ---";
+        if (collOkay)
+        {
+            canvas->addRedBound(potColl);
+        }
 
         // TODO: growth check
-        QRectF sceneDraw = getSceneDraw();
-
-        printPt("potDraw tl", potDraw.topLeft());
-        printPt("sceneDraw tl", sceneDraw.topLeft());
-        printPt("potDraw br", potDraw.bottomRight());
-        printPt("sceneDraw br", sceneDraw.bottomRight());
-
-        qreal minX = qMin(potDraw.left() - qreal(GRID_SPACING), sceneDraw.left());
-        qreal minY = qMin(potDraw.top() - qreal(GRID_SPACING), sceneDraw.top());
-        qreal maxX = qMax(potDraw.right() + qreal(GRID_SPACING), sceneDraw.right());
-        qreal maxY = qMax(potDraw.bottom() + qreal(GRID_SPACING), sceneDraw.bottom());
-
-        if ( minX != sceneDraw.left() ||
-             minY != sceneDraw.top() ||
-             maxX != sceneDraw.right() ||
-             maxY != sceneDraw.bottom() )
+        if (!isRoot())
         {
-            qDebug() << "Parent changed size";
-            growOkay = false;
-            canvas->addRedBound(potDraw);
-        }
-        else
-        {
-            qDebug() << "parent ok";
-            canvas->addBlueBound(potDraw);
-        }
+            QRectF sceneDraw = getSceneDraw();
 
+            printPt("potDraw tl", potDraw.topLeft());
+            printPt("sceneDraw tl", sceneDraw.topLeft());
+            printPt("potDraw br", potDraw.bottomRight());
+            printPt("sceneDraw br", sceneDraw.bottomRight());
 
-        /*
-        if (collOkay)
-            canvas->addGreenBound(potColl);
-        else
-            canvas->addRedBound(potColl);
-        */
+            qreal minX = qMin(potDraw.left() - qreal(GRID_SPACING), sceneDraw.left());
+            qreal minY = qMin(potDraw.top() - qreal(GRID_SPACING), sceneDraw.top());
+            qreal maxX = qMax(potDraw.right() + qreal(GRID_SPACING), sceneDraw.right());
+            qreal maxY = qMax(potDraw.bottom() + qreal(GRID_SPACING), sceneDraw.bottom());
+
+            if ( minX != sceneDraw.left() ||
+                 minY != sceneDraw.top() ||
+                 maxX != sceneDraw.right() ||
+                 maxY != sceneDraw.bottom() )
+            {
+                qDebug() << "Parent changed size";
+                growOkay = false;
+                canvas->addRedBound(potDraw);
+            }
+            else
+            {
+                qDebug() << "parent ok";
+                canvas->addBlueBound(potDraw);
+            }
+        }
 
         if (collOkay && growOkay)
+        {
+            printPt("Returning", pt);
             return pt;
+        }
         else if (collOkay)
             collOnly.append(pt);
         else if (growOkay)
             growOnly.append(pt);
     }
+    qDebug() << "--- end for ---";
 
+    if (!collOnly.empty())
+    {
+        qDebug() << "Coll only not empty";
+        return collOnly.first();
+    }
+    if (!growOnly.empty())
+    {
+        qDebug() << "Grow only not empty";
+
+    }
     // Nothing worked, so return snapped
     return bloom.first();
 }

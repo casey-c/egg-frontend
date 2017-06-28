@@ -330,3 +330,20 @@ void Canvas::removeFromScene(Node* n)
     highlighted = n->getParent();
     delete n;
 }
+
+void Canvas::deleteSelection()
+{
+    if (selectedNodes.empty() || selectedNodes.first()->isRoot() )
+        return;
+
+    // Update highlight
+    highlighted = selectedNodes.first()->getParent();
+
+    // Delete everything
+    for (Node* n : selectedNodes)
+    {
+        scene->removeItem(n);
+        delete n;
+    }
+    selectedNodes.clear();
+}

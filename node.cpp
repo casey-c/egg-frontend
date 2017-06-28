@@ -72,18 +72,12 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     }
     else if ( isCut() )
     {
-        //setFlag(ItemIsMovable);
         setFlag(ItemSendsGeometryChanges);
         setCacheMode(DeviceCoordinateCache);
         setAcceptHoverEvents(true);
-
-        //drawBox = QRectF( QPointF(0, 0), QPointF(qreal(EMPTY_CUT_SIZE),
-                                                 //qreal(EMPTY_CUT_SIZE)) );
-        QPointF tl = parent->mapFromScene(pt);
-        QPointF br(tl.x() + qreal(EMPTY_CUT_SIZE),
-                   tl.y() + qreal(EMPTY_CUT_SIZE));
-        drawBox = QRectF(tl, br);
-        //setPos(snapPoint(pt));
+        QPointF br(pt.x() + qreal(EMPTY_CUT_SIZE),
+                   pt.y() + qreal(EMPTY_CUT_SIZE));
+        drawBox = QRectF(pt, br);
     }
 
     // Colors
@@ -124,23 +118,24 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     selected(false),
     ghost(false)
 {
+    // Qt flags
+    setFlag(ItemSendsGeometryChanges);
+    setCacheMode(DeviceCoordinateCache);
+    setAcceptHoverEvents(true);
+
+    // Shadow
     shadow = new QGraphicsDropShadowEffect(this);
     shadow->setEnabled(false);
     shadow->setBlurRadius(2);
     shadow->setOffset(2);
     this->setGraphicsEffect(shadow);
 
-    setFlag(ItemSendsGeometryChanges);
-    setCacheMode(DeviceCoordinateCache);
-    setAcceptHoverEvents(true);
+    // Draw box
+    QPointF br(pt.x() + qreal(STATEMENT_SIZE),
+               pt.y() + qreal(STATEMENT_SIZE));
+    drawBox = QRectF(pt, br);
 
-    //drawBox = QRectF( QPointF(0, 0), QPointF(qreal(STATEMENT_SIZE),
-                                             //qreal(STATEMENT_SIZE)));
-    drawBox = QRectF( QPointF(0, 0), QPointF(qreal(STATEMENT_SIZE),
-                                             qreal(STATEMENT_SIZE)));
-    //setPos(snapPoint(pt));
-    //setPos(pt);
-
+    // Color palette
     gradDefault = QRadialGradient( drawBox.x() + 3,
                                    drawBox.y() + 3,
                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
@@ -165,6 +160,7 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     gradSelected.setColorAt(0, QColor(110, 226, 218));
     gradSelected.setColorAt(1, QColor(0, 209, 140));
 
+    // Statement font
     font = QFont();
     font.setPixelSize(GRID_SPACING * 2 - 6);
 }
@@ -176,34 +172,7 @@ Node::~Node()
     if (parent != nullptr)
     {
         parent->children.removeOne(this);
-
-        // Update parent
-        if (parent->children.empty())
-        {
-            qDebug() << "Edge case! Need to resize to empty cut";
-            if (parent->isRoot())
-            {
-                qDebug() << "Don't need to resize root";
-            }
-            else
-            {
-                QRectF r = parent->getSceneDraw();
-                qreal cx = r.center().x();
-                qreal cy = r.center().y();
-                QPointF tl(cx - qreal(EMPTY_CUT_SIZE / 2),
-                           cy - qreal(EMPTY_CUT_SIZE / 2));
-                QPointF br(tl.x() + qreal(EMPTY_CUT_SIZE),
-                           tl.y() + qreal(EMPTY_CUT_SIZE));
-
-                QRectF mapped(parent->mapFromScene(tl), parent->mapFromScene(br));
-                parent->setDrawBoxFromPotential(mapped);
-            }
-        }
-        else
-        {
-            QRectF p = parent->predictMySceneDraw(QList<Node*>(), QList<QRectF>());
-            canvas->addRedBound(p);
-        }
+        parent->updateAncestors();
     }
 
     for (Node* child : children)
@@ -213,51 +182,34 @@ Node::~Node()
 Node* Node::addChildCut(QPointF pt)
 {
     QList<QPointF> bloom = constructAddBloom(pt);
-
-    canvas->clearDots();
-    //canvas->addBlackDot(bloom.first());
-
-    for (QPointF b : bloom)
-    {
-        //canvas->addBlackDot(b);
-        //printPt("b", b);
-    }
-    qDebug() << "---";
-
     QPointF finalPoint = findPoint(bloom,
                                    qreal(EMPTY_CUT_SIZE),
                                    qreal(EMPTY_CUT_SIZE));
-    //canvas->addBlackDot(finalPoint);
 
-    //Node* newChild = new Node(canvas, this, Cut, mapFromScene(finalPoint));
-    Node* newChild = new Node(canvas, this, Cut, finalPoint);
+    //Node* newChild = new Node(canvas, this, Cut, finalPoint);
+    Node* newChild = new Node(canvas, this, Cut, mapFromScene(finalPoint));
+
     children.append(newChild);
     newChild->setParentItem(this);
-    newChild->setOpacity(0.5);
-    //newChild->setPos(mapFromScene(finalPoint));
-    updateFromChildAdd();
+    updateAncestors();
+
     return newChild;
 }
 
 Node* Node::addChildStatement(QPointF pt, QString t)
 {
-
-    //QPointF adjTopLeft(pt.x() - qreal(STATEMENT_SIZE / 2),
-                       //pt.y() - qreal(STATEMENT_SIZE / 2));
     QList<QPointF> bloom = constructAddBloom(pt);
-
     QPointF finalPoint = findPoint(bloom,
                                    qreal(STATEMENT_SIZE),
                                    qreal(STATEMENT_SIZE));
-    printPt("final", finalPoint);
 
     Node* newChild = new Node(canvas, this, t, mapFromScene(finalPoint));
     children.append(newChild);
     newChild->setParentItem(this);
-    newChild->setPos(mapFromScene(finalPoint));
+    //newChild->setPos(mapFromScene(finalPoint));
     //newChild->setPos(mapFromScene(QPointF(finalPoint.x() - qreal(STATEMENT_SIZE / 2),
                                           //finalPoint.y() - qreal(STATEMENT_SIZE / 2))));
-    updateFromChildAdd();
+    updateAncestors();
     return newChild;
 }
 
@@ -489,32 +441,36 @@ QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
 }
 
 /*
- * Resizes the draw box because we received a new child
+ * Recursive function to update all draw boxes from child boxes.
  *
- * This function will percolate up the tree.
+ * Call this on the parent of an added or deleted node, and it'll make sure to
+ * update all the way up the tree
  */
-void Node::updateFromChildAdd()
+void Node::updateAncestors()
 {
     if (isRoot())
         return;
 
-    //QRectF rect = predictMySceneDraw(QList<Node*>(), QList<QRectF>());
+    QRectF myNewDrawBox = predictMySceneDraw(QList<Node*>(), QList<QRectF>());
+    QRectF sceneDraw = getSceneDraw();
 
-    QRectF s = predictMySceneDraw(QList<Node*>(), QList<QRectF>());
-    canvas->addRedBound(s);
+    canvas->addRedBound(myNewDrawBox);
+    canvas->addBlueBound(sceneDraw);
 
-    QRectF mapped(mapFromScene(s.topLeft()), mapFromScene(s.bottomRight()));
-    setDrawBoxFromPotential(mapped);
+    // Check if any changes occur
+    if ( myNewDrawBox.left() != sceneDraw.left()   ||
+         myNewDrawBox.top() != sceneDraw.top()     ||
+         myNewDrawBox.right() != sceneDraw.right() ||
+         myNewDrawBox.bottom() != sceneDraw.bottom() )
+    {
+        // New draw box, so we have to update it
+        QPointF tl = mapFromScene(myNewDrawBox.topLeft());
+        QPointF br = mapFromScene(myNewDrawBox.bottomRight());
 
+        setDrawBoxFromPotential(QRectF(tl, br));
+        parent->updateAncestors();
+    }
 
-    //for (Node* c : children)
-    //{
-        //canvas->addBlueBound(c->getSceneDraw());
-    //}
-
-    //canvas->addBlueBound(rect);
-    //setDrawBoxFromPotential(rect);
-    parent->updateFromChildAdd();
 }
 
 //////////////////////////
@@ -660,9 +616,25 @@ bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
  * NOTE/BUG:
  *   an empty children list is an unhandled bug -- no way currently to predict
  *   an empty cut if this is used for updating after a deletion of a node
+ *    -- update: the edge case check should work to solve this now
  */
 QRectF Node::predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws)
 {
+    // Edge case
+    if (children.empty())
+    {
+        // Return an empty cut
+        QRectF sceneDraw = getSceneDraw();
+        qreal cx = (sceneDraw.left() + sceneDraw.right()) / 2;
+        qreal cy = (sceneDraw.top() + sceneDraw.bottom()) / 2;
+        QPointF tl(cx - qreal(EMPTY_CUT_SIZE / 2),
+                   cy - qreal(EMPTY_CUT_SIZE / 2));
+        QPointF br(cx + qreal(EMPTY_CUT_SIZE / 2),
+                   cy + qreal(EMPTY_CUT_SIZE / 2));
+        return QRectF(tl, br);
+    }
+
+
     qreal minX, minY, maxX, maxY;
     minX = minY = BIG_NUMBER;
     maxX = maxY = -BIG_NUMBER;
@@ -752,7 +724,9 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
     else if (event->buttons() & Qt::RightButton)
     {
-        canvas->removeFromScene(this);
+        //canvas->removeFromScene(this);
+        canvas->selectNode(this);
+        canvas->deleteSelection();
     }
 }
 
@@ -875,6 +849,7 @@ loop:
 
     return collider;
 }
+
 
 ///////////////
 /// Helpers ///

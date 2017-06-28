@@ -31,6 +31,7 @@ public:
     bool hasAnySelectedNodes();
 
     void removeFromScene(Node* n);
+    void deleteSelection();
 
     Node* getRoot() { return root; }
 private:

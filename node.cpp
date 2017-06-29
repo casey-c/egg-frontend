@@ -624,17 +624,31 @@ bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
 QRectF Node::predictMySceneDraw(QList<Node*> altNodes, QList<QRectF> altDraws)
 {
     // Edge case
-    if (children.empty())
+    if (children.empty() && isCut())
     {
-        // Return an empty cut
-        QRectF sceneDraw = getSceneDraw();
-        qreal cx = (sceneDraw.left() + sceneDraw.right()) / 2;
-        qreal cy = (sceneDraw.top() + sceneDraw.bottom()) / 2;
-        QPointF tl(cx - qreal(EMPTY_CUT_SIZE / 2),
-                   cy - qreal(EMPTY_CUT_SIZE / 2));
-        QPointF br(cx + qreal(EMPTY_CUT_SIZE / 2),
-                   cy + qreal(EMPTY_CUT_SIZE / 2));
-        return QRectF(tl, br);
+        if (isCut())
+        {
+            // Return an empty cut
+            QRectF sceneDraw = getSceneDraw();
+            qreal cx = (sceneDraw.left() + sceneDraw.right()) / 2;
+            qreal cy = (sceneDraw.top() + sceneDraw.bottom()) / 2;
+            QPointF tl(cx - qreal(EMPTY_CUT_SIZE / 2),
+                       cy - qreal(EMPTY_CUT_SIZE / 2));
+            QPointF br(cx + qreal(EMPTY_CUT_SIZE / 2),
+                       cy + qreal(EMPTY_CUT_SIZE / 2));
+            return QRectF(tl, br);
+        }
+        else if (isStatement())
+        {
+            QRectF sceneDraw = getSceneDraw();
+            qreal cx = (sceneDraw.left() + sceneDraw.right()) / 2;
+            qreal cy = (sceneDraw.top() + sceneDraw.bottom()) / 2;
+            QPointF tl(cx - qreal(STATEMENT_SIZE / 2),
+                       cy - qreal(STATEMENT_SIZE / 2));
+            QPointF br(cx + qreal(STATEMENT_SIZE / 2),
+                       cy + qreal(STATEMENT_SIZE / 2));
+            return QRectF(tl, br);
+        }
     }
 
 
@@ -741,9 +755,45 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     mouseDown = false;
     shadow->setEnabled(false);
-    ghost = false;
+    if (ghost)
+    {
+        ghost = false;
+        lowerAllAncestors();
 
-    lowerAllAncestors();
+        if (newParent != parent)
+        {
+            // Remove us from the old
+            parent->children.removeOne(this);
+            qDebug() << "removed from old parent";
+            parent->updateAncestors();
+
+            // Put us in the new
+            QRectF sceneDraw = getSceneDraw();
+            parent = newParent;
+            parent->children.append(this);
+
+            if (parent->isRoot())
+                setParentItem(0);
+            else
+                setParentItem(parent);
+
+            // Move us correctly
+            if (!parent->isRoot())
+            {
+                QPointF tl = parent->mapFromScene(sceneDraw.topLeft());
+                QPointF br = parent->mapFromScene(sceneDraw.bottomRight());
+                setDrawBoxFromPotential(QRectF(tl, br));
+                printRect("moved", QRectF(tl, br));
+            }
+
+            //parent->update();
+            //update();
+
+            parent->updateAncestors();
+        }
+
+    }
+
     //setZValue(Z_NORMAL);
     update();
 
@@ -809,6 +859,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             if (ghost)
             {
                 Node* collider = determineNewParent(event->scenePos());
+                newParent = collider;
                 canvas->addBlueBound(collider->getSceneDraw());
                 for (Node* n : sel)
                     n->moveBy(pt.x(), pt.y());

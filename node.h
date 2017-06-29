@@ -51,6 +51,7 @@ public:
     void selectAllKids();
 
     static void setSelectionFromBox(Node* root, QRectF selBox);
+
 private:
 
     //////////////
@@ -96,6 +97,10 @@ private:
     // Change parent
     bool ghost;
     Node* determineNewParent(QPointF pt);
+    void raiseAllAncestors();
+    void lowerAllAncestors();
+
+    Node* newParent;
 
     // Add
     QPointF findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isStatement = false);
@@ -135,10 +140,6 @@ private:
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
-
-    // Ghost
-    void raiseAllAncestors();
-    void lowerAllAncestors();
 };
 
 #endif // NODE_H

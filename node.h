@@ -135,6 +135,10 @@ private:
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+
+    // Ghost
+    void raiseAllAncestors();
+    void lowerAllAncestors();
 };
 
 #endif // NODE_H

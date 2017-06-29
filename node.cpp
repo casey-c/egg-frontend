@@ -16,6 +16,9 @@
 #define STATEMENT_SIZE (2 * GRID_SPACING)
 #define BIG_NUMBER 999999999
 
+#define Z_NORMAL 0
+#define Z_RAISED 10
+
 #define BORDER_RADIUS 10
 
 // Forward declarations for helper functions (implementation located at end)
@@ -715,7 +718,11 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
     if (event->buttons() & Qt::LeftButton)
     {
         if (event->modifiers() & Qt::AltModifier)
+        {
             ghost = true;
+            //setZValue(Z_RAISED);
+            raiseAllAncestors();
+        }
 
         mouseOffset = event->pos();
         shadow->setEnabled(true);
@@ -735,6 +742,9 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     mouseDown = false;
     shadow->setEnabled(false);
     ghost = false;
+
+    lowerAllAncestors();
+    //setZValue(Z_NORMAL);
     update();
 
     QGraphicsObject::mouseReleaseEvent(event);
@@ -848,6 +858,26 @@ loop:
     }
 
     return collider;
+}
+
+void Node::raiseAllAncestors()
+{
+    Node* curr = this;
+    while (curr != nullptr && !curr->isRoot())
+    {
+        curr->setZValue(Z_RAISED);
+        curr = curr->parent;
+    }
+}
+
+void Node::lowerAllAncestors()
+{
+    Node* curr = this;
+    while (curr != nullptr && !curr->isRoot())
+    {
+        curr->setZValue(Z_NORMAL);
+        curr = curr->parent;
+    }
 }
 
 

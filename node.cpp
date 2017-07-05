@@ -7,6 +7,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QtCore/QtMath>
 #include <QDebug>
+#include <QQueue>
 
 #define GRID_SPACING 16
 #define STROKE_ADJ 2
@@ -755,6 +756,14 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     mouseDown = false;
     shadow->setEnabled(false);
+
+    canvas->clearBounds();
+    canvas->clearDots();
+
+    canvas->addRedBound(getSceneDraw());
+    canvas->addBlackDot(scenePos());
+    canvas->addBlackDot(getSceneDraw().topLeft());
+
     if (ghost)
     {
         ghost = false;
@@ -769,28 +778,89 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
             // Put us in the new
             QRectF sceneDraw = getSceneDraw();
+            canvas->addGreenBound(sceneDraw);
             parent = newParent;
             parent->children.append(this);
 
             if (parent->isRoot())
-                setParentItem(0);
+            {
+                setParentItem(0); //this implicitly adds to scene
+                // may be the source of the crash on exit
+            }
             else
                 setParentItem(parent);
 
             // Move us correctly
+            QPointF tl, br;
+
             if (!parent->isRoot())
             {
-                QPointF tl = parent->mapFromScene(sceneDraw.topLeft());
-                QPointF br = parent->mapFromScene(sceneDraw.bottomRight());
-                setDrawBoxFromPotential(QRectF(tl, br));
-                printRect("moved", QRectF(tl, br));
+                tl = parent->mapFromScene(sceneDraw.topLeft());
+                br = parent->mapFromScene(sceneDraw.bottomRight());
+            }
+            else
+            {
+                tl = sceneDraw.topLeft();
+                br = sceneDraw.bottomRight();
             }
 
+            // Adjust for pos offset
+            //qreal dx = tl.x() - scenePos().x();
+            //qreal dy = tl.y() - scenePos().y();
+
+            qreal dx = scenePos().x();
+            qreal dy = scenePos().y();
+
+            setPos(0, 0);
+
+            dx -= scenePos().x();
+            dy -= scenePos().y();
+
+            qDebug() << "Pos changed by "
+                     << dx
+                     << ","
+                     << dy;
+
+            // This needs to percolate downward I think
+            QQueue<Node*> updateQueue;
+            for (Node* c : children)
+                updateQueue.enqueue(c);
+
+            while (!updateQueue.empty())
+            {
+                Node* curr = updateQueue.dequeue();
+                qDebug() << "Adjusting node ";
+                canvas->addBlueBound(curr->getSceneDraw());
+
+                QPointF nPos = curr->scenePos();
+                nPos.setX(nPos.x() + dx);
+                nPos.setY(nPos.y() + dy);
+                //curr->setPos(nPos);
+                curr->setPos(curr->mapFromScene(nPos));
+
+                for (Node* child : curr->children)
+                    updateQueue.enqueue(child);
+
+                canvas->addBlackBound(curr->getSceneDraw());
+            }
+
+            //tl.setX(tl.x() + dx);
+            //tl.setY(tl.y() + dy);
+            //br.setX(br.x() + dx);
+            //br.setY(br.y() + dy);
+
+            setDrawBoxFromPotential(QRectF(tl, br));
             //parent->update();
             //update();
 
             parent->updateAncestors();
         }
+        else
+        {
+            qDebug() << "Moved around in same parent";
+            parent->updateAncestors();
+        }
+
 
     }
 

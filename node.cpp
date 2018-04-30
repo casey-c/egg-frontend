@@ -51,6 +51,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     mouseDown(false),
     mouseOffset(0, 0),
     selected(false),
+    parentSelected(false),
     ghost(false)
 {
     // Drop shadow on click and drag
@@ -110,6 +111,7 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     mouseOffset(0, 0),
     letter(s),
     selected(false),
+    parentSelected(false),
     ghost(false)
 {
     // Qt flags
@@ -246,6 +248,8 @@ void Node::removeHighlight()
 void Node::selectThis()
 {
     selected = true;
+    for (Node* n : children)
+        n->colorDueToSelectedParent();
     update();
 }
 
@@ -255,6 +259,8 @@ void Node::selectThis()
 void Node::deselectThis()
 {
     selected = false;
+    for (Node* n : children)
+        n->removeColorDueToUnselectedParent();
     update();
 }
 
@@ -273,6 +279,20 @@ void Node::toggleSelection()
         canvas->deselectNode(this);
     else
         canvas->selectNode(this);
+}
+
+void Node::colorDueToSelectedParent() {
+    parentSelected = true;
+    for (Node* n : children)
+        n->colorDueToSelectedParent();
+    update();
+}
+
+void Node::removeColorDueToUnselectedParent() {
+    parentSelected = false;
+    for (Node* n : children)
+        n->removeColorDueToUnselectedParent();
+    update();
 }
 
 /*
@@ -362,8 +382,10 @@ void Node::paint(QPainter* painter,
 
     if (isStatement())
         painter->setPen(QPen(QColor(0,0,0,0)));
+    else
+        painter->setPen(QPen(ColorPalette::strokeColor()));
 
-    if (selected)
+    if (selected || parentSelected)
         //painter->setBrush(QBrush(gradSelected));
         painter->setBrush(QBrush(ColorPalette::selectColor()));
     else
@@ -385,7 +407,7 @@ void Node::paint(QPainter* painter,
 
     if ( isStatement() )
     {
-        painter->setPen(QPen(QColor(0,0,0,255)));
+        painter->setPen(QPen(ColorPalette::fontColor()));
         painter->setFont(font);
         painter->drawText( drawBox, Qt::AlignCenter, letter );
     }

@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "canvas.h"
 #include <QMainWindow>
 
 namespace Ui {
@@ -20,8 +21,13 @@ private slots:
 
     void on_actionNew_triggered();
 
+    void on_actionLight_triggered();
+
+    void on_actionDark_triggered();
+
 private:
     Ui::MainWindow *ui;
+    Canvas* canvas;
 };
 
 #endif // MAINWINDOW_H

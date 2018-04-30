@@ -34,6 +34,9 @@ public:
     void deleteSelection();
 
     Node* getRoot() { return root; }
+
+    void updateAll();
+
 private:
     //////////////
     /// Fields ///

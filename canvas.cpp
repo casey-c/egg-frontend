@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QScrollBar>
 #include "constants.h"
+#include "colorpalette.h"
 
 #define SEL_BOX_Z 10
 
@@ -41,18 +42,17 @@ void Canvas::drawBackground(QPainter* painter, const QRectF &rect)
 {
     Q_UNUSED(painter)
     Q_UNUSED(rect)
-    //QRectF sceneRect = this->sceneRect();
+    QRectF sceneRect = this->sceneRect();
 
     //QLinearGradient gradient(sceneRect.topLeft(),
                              //sceneRect.bottomRight());
     //gradient.setColorAt(0, Qt::white);
     //gradient.setColorAt(1, QColor(Qt::lightGray).lighter(150));
 
-    //painter->fillRect(rect.intersected(sceneRect),
-                      //gradient);
+    painter->fillRect(rect.intersected(sceneRect), ColorPalette::canvasColor());
 
-    //painter->setBrush(Qt::NoBrush);
-    //painter->drawRect(sceneRect);
+    painter->setBrush(Qt::NoBrush);
+    painter->drawRect(sceneRect);
 }
 
 void Canvas::keyPressEvent(QKeyEvent* event)
@@ -414,4 +414,13 @@ void Canvas::deleteSelection()
     delete n;
   }
   selectedNodes.clear();
+}
+
+void Canvas::updateAll() {
+    for (QGraphicsItem* i : scene->items() ) {
+        Node* n = dynamic_cast<Node*>(i);
+        if (n != nullptr)
+            n->update();
+    }
+    invalidateScene(sceneRect());
 }

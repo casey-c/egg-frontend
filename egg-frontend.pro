@@ -36,7 +36,8 @@ HEADERS += \
     node.h \
     canvas.h \
     quantumbool.h \
-    colorpalette.h
+    colorpalette.h \
+    constants.h
 
 FORMS += \
         mainwindow.ui

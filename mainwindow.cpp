@@ -7,7 +7,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->verticalLayout->addWidget(new Canvas(this));
+    ui->workArea->addWidget(new Canvas(this));
 }
 
 MainWindow::~MainWindow()

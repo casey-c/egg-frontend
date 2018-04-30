@@ -14,3 +14,14 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
+
+void MainWindow::on_actionExit_triggered()
+{
+    close();
+}
+
+void MainWindow::on_actionNew_triggered()
+{
+    MainWindow* w2 = new MainWindow();
+    w2->show();
+}

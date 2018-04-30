@@ -43,6 +43,8 @@
      <addaction name="actionText_File"/>
      <addaction name="actionPEGASUS"/>
     </widget>
+    <addaction name="actionNew"/>
+    <addaction name="separator"/>
     <addaction name="actionOpen"/>
     <addaction name="actionSave"/>
     <addaction name="separator"/>
@@ -64,7 +66,7 @@
     <property name="title">
      <string>Help</string>
     </property>
-    <addaction name="actionKeybinds"/>
+    <addaction name="actionAbout"/>
     <addaction name="separator"/>
     <addaction name="actionTutorial"/>
    </widget>
@@ -89,26 +91,41 @@
    </property>
   </action>
   <action name="actionOpen">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Open</string>
    </property>
   </action>
   <action name="actionSave">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Save</string>
    </property>
   </action>
   <action name="actionImport">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Import</string>
    </property>
   </action>
   <action name="actionText_File">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Text File</string>
    </property>
   </action>
   <action name="actionPEGASUS">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>PEGASUS</string>
    </property>
@@ -132,6 +149,9 @@
    </property>
   </action>
   <action name="actionTutorial">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Tutorial</string>
    </property>
@@ -139,6 +159,19 @@
   <action name="actionGithub">
    <property name="text">
     <string>Github</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionNew">
+   <property name="text">
+    <string>New Window</string>
    </property>
   </action>
  </widget>

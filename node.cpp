@@ -186,6 +186,9 @@ Node::~Node()
 
 Node* Node::addChildCut(QPointF pt)
 {
+    if (isStatement())
+        return nullptr;
+
     QList<QPointF> bloom = constructAddBloom(pt);
     QPointF finalPoint = findPoint(bloom,
                                    qreal(EMPTY_CUT_SIZE),
@@ -203,6 +206,9 @@ Node* Node::addChildCut(QPointF pt)
 
 Node* Node::addChildStatement(QPointF pt, QString t)
 {
+    if (isStatement())
+        return nullptr;
+
     QList<QPointF> bloom = constructAddBloom(pt);
     QPointF finalPoint = findPoint(bloom,
                                    qreal(STATEMENT_SIZE),

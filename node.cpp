@@ -1,5 +1,6 @@
 #include "canvas.h"
 #include "node.h"
+#include "colorpalette.h"
 
 #include <QPainter>
 #include <QGraphicsDropShadowEffect>
@@ -85,29 +86,29 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     }
 
     // Colors
-    gradDefault = QRadialGradient( drawBox.x() + 3,
-                                   drawBox.y() + 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradDefault.setColorAt(0, QColor(249, 249, 249));
-    gradDefault.setColorAt(1, QColor(249, 249, 249));
+    //gradDefault = QRadialGradient( drawBox.x() + 3,
+                                   //drawBox.y() + 3,
+                                   //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradDefault.setColorAt(0, QColor(249, 249, 249));
+    //gradDefault.setColorAt(1, QColor(249, 249, 249));
 
-    gradHighlighted = QRadialGradient( drawBox.x() + 3,
-                                       drawBox.y() + 3,
-                                       (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradHighlighted.setColorAt(0, QColor(240, 240, 240));
-    gradHighlighted.setColorAt(1, QColor(210, 210, 210));
+    //gradHighlighted = QRadialGradient( drawBox.x() + 3,
+                                       //drawBox.y() + 3,
+                                       //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradHighlighted.setColorAt(0, QColor(240, 240, 240));
+    //gradHighlighted.setColorAt(1, QColor(210, 210, 210));
 
-    gradClicked = QRadialGradient( drawBox.x() + 3,
-                                   drawBox.y() + 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradClicked.setColorAt(0, QColor(210, 210, 210));
-    gradClicked.setColorAt(1, QColor(240, 240, 240));
+    //gradClicked = QRadialGradient( drawBox.x() + 3,
+                                   //drawBox.y() + 3,
+                                   //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradClicked.setColorAt(0, QColor(210, 210, 210));
+    //gradClicked.setColorAt(1, QColor(240, 240, 240));
 
-    gradSelected = QRadialGradient( drawBox.x() + 3,
-                                    drawBox.y() + 3,
-                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradSelected.setColorAt(0, QColor(110, 226, 218));
-    gradSelected.setColorAt(1, QColor(0, 209, 140));
+    //gradSelected = QRadialGradient( drawBox.x() + 3,
+                                    //drawBox.y() + 3,
+                                    //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradSelected.setColorAt(0, QColor(110, 226, 218));
+    //gradSelected.setColorAt(1, QColor(0, 209, 140));
 }
 
 /* Statement constructor */
@@ -140,29 +141,29 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     drawBox = QRectF(pt, br);
 
     // Color palette
-    gradDefault = QRadialGradient( drawBox.x() + 3,
-                                   drawBox.y() + 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradDefault.setColorAt(0, QColor(0, 0, 0, 0));
-    gradDefault.setColorAt(1, QColor(0, 0, 0, 0));
+    //gradDefault = QRadialGradient( drawBox.x() + 3,
+                                   //drawBox.y() + 3,
+                                   //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradDefault.setColorAt(0, QColor(0, 0, 0, 0));
+    //gradDefault.setColorAt(1, QColor(0, 0, 0, 0));
 
-    gradHighlighted = QRadialGradient( drawBox.x() + 3,
-                                       drawBox.y() + 3,
-                                       (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradHighlighted.setColorAt(0, QColor(240, 240, 240));
-    gradHighlighted.setColorAt(1, QColor(210, 210, 210));
+    //gradHighlighted = QRadialGradient( drawBox.x() + 3,
+                                       //drawBox.y() + 3,
+                                       //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradHighlighted.setColorAt(0, QColor(240, 240, 240));
+    //gradHighlighted.setColorAt(1, QColor(210, 210, 210));
 
-    gradClicked = QRadialGradient( drawBox.x() + 3,
-                                   drawBox.y() + 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradClicked.setColorAt(0, QColor(210, 210, 210));
-    gradClicked.setColorAt(1, QColor(240, 240, 240));
+    //gradClicked = QRadialGradient( drawBox.x() + 3,
+                                   //drawBox.y() + 3,
+                                   //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradClicked.setColorAt(0, QColor(210, 210, 210));
+    //gradClicked.setColorAt(1, QColor(240, 240, 240));
 
-    gradSelected = QRadialGradient( drawBox.x() + 3,
-                                    drawBox.y() + 3,
-                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradSelected.setColorAt(0, QColor(110, 226, 218));
-    gradSelected.setColorAt(1, QColor(0, 209, 140));
+    //gradSelected = QRadialGradient( drawBox.x() + 3,
+                                    //drawBox.y() + 3,
+                                    //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradSelected.setColorAt(0, QColor(110, 226, 218));
+    //gradSelected.setColorAt(1, QColor(0, 209, 140));
 
     // Statement font
     font = QFont();
@@ -368,15 +369,16 @@ void Node::paint(QPainter* painter,
         painter->setPen(QPen(QColor(0,0,0,0)));
 
     if (selected)
-        painter->setBrush(QBrush(gradSelected));
+        //painter->setBrush(QBrush(gradSelected));
+        painter->setBrush(QBrush(ColorPalette::selectColor()));
     else
     {
         if (mouseDown)
-            painter->setBrush(QBrush(gradClicked));
+            painter->setBrush(QBrush(ColorPalette::mouseDownColor()));
         else if (highlighted)
-            painter->setBrush(QBrush(gradHighlighted));
+            painter->setBrush(QBrush(ColorPalette::highlightColor()));
         else
-            painter->setBrush(QBrush(gradDefault));
+            painter->setBrush(QBrush(ColorPalette::defaultColor()));
     }
 
     if (ghost)

@@ -73,11 +73,10 @@ private:
     bool highlighted;
     bool mouseDown;
 
-    QRadialGradient gradDefault;
-    QRadialGradient gradHighlighted;
-    QRadialGradient gradClicked;
-
-    QRadialGradient gradSelected;
+    //QRadialGradient gradDefault;
+    //QRadialGradient gradHighlighted;
+    //QRadialGradient gradClicked;
+    //QRadialGradient gradSelected;
 
     QGraphicsDropShadowEffect* shadow;
 

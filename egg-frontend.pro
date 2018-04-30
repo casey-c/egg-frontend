@@ -28,13 +28,15 @@ SOURCES += \
         mainwindow.cpp \
     node.cpp \
     canvas.cpp \
-    quantumbool.cpp
+    quantumbool.cpp \
+    colorpalette.cpp
 
 HEADERS += \
         mainwindow.h \
     node.h \
     canvas.h \
-    quantumbool.h
+    quantumbool.h \
+    colorpalette.h
 
 FORMS += \
         mainwindow.ui

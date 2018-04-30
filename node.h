@@ -21,7 +21,7 @@ class Node : public QGraphicsObject
 {
 public:
     static Node* makeRoot(Canvas* can);
-    ~Node() {}
+    ~Node();
 
     // Add
     Node* addChildCut(QPointF pt);
@@ -45,9 +45,13 @@ public:
     Node* getChild();
 
     // Selection
+    void toggleSelection();
     void selectThis();
     void deselectThis();
     void selectAllKids();
+
+    static void setSelectionFromBox(Node* root, QRectF selBox);
+
 private:
 
     //////////////
@@ -90,7 +94,16 @@ private:
     // Selection
     bool selected;
 
-    // New collision
+    // Change parent
+    bool ghost;
+    Node* determineNewParent(QPointF pt);
+    void raiseAllAncestors();
+    void lowerAllAncestors();
+
+    Node* newParent;
+
+    // Add
+    QPointF findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isStatement = false);
 
     ///////////////
     /// Methods ///
@@ -100,8 +113,6 @@ private:
     Node(Canvas* can, Node* par, NodeType t, QPointF pt);
     Node(Canvas* can, Node* par, QString s, QPointF pt);
 
-    // Selection
-    void toggleSelection();
 
     // Graphics
     QRectF boundingRect() const override;
@@ -116,6 +127,7 @@ private:
     QRectF toDraw(QRectF collision) const;
     QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
     QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
+    void updateAncestors();
 
     // Collision Checking
     static bool checkPotential(QList<Node*> sel, QPointF pt);

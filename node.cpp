@@ -934,8 +934,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         // No movement
         if (bloom.empty())
         {
-            if (sel.size() == 1)
-                canvas->clearSelection();
+            if (sel.size() == 1) canvas->clearSelection();
             return;
         }
 
@@ -966,8 +965,11 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             }
         }
 
-        if (sel.size() == 1)
-            canvas->clearSelection();
+        // not sure if i like this, but it's needed for now (lazy coding made
+        // selections basically mandatory; flickers if constantly selecting/
+        // deselecting when moving a single object -- can probably be "fixed"
+        // with some minimal effort, but idk if needed)
+        if (sel.size() == 1) canvas->clearSelection();
     }
 }
 

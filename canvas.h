@@ -7,6 +7,8 @@ class Node;
 
 class Canvas : public QGraphicsView
 {
+    Q_OBJECT
+
 public:
     Canvas(QWidget* parent = 0);
     ~Canvas() {}
@@ -36,6 +38,9 @@ public:
     Node* getRoot() { return root; }
 
     void updateAll();
+
+signals:
+    void toggleTheme();
 
 private:
     //////////////

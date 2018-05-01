@@ -18,12 +18,10 @@ public:
 
 private slots:
     void on_actionExit_triggered();
-
     void on_actionNew_triggered();
-
     void on_actionLight_triggered();
-
     void on_actionDark_triggered();
+    void toggleTheme();
 
 private:
     Ui::MainWindow *ui;

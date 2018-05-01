@@ -13,6 +13,8 @@ MainWindow::MainWindow(QWidget *parent) :
     QActionGroup* group = new QActionGroup( this );
     ui->actionDark->setActionGroup(group);
     ui->actionLight->setActionGroup(group);
+
+    connect(canvas, SIGNAL(toggleTheme()), this, SLOT(toggleTheme()));
 }
 
 MainWindow::~MainWindow()
@@ -41,4 +43,12 @@ void MainWindow::on_actionDark_triggered()
 {
    ColorPalette::darkTheme();
    canvas->updateAll();
+}
+
+// Lazy, not good practice, but good for presentation and debug so sorry
+void MainWindow::toggleTheme() {
+    if (ui->actionDark->isChecked())
+        ui->actionLight->trigger();
+    else
+        ui->actionDark->trigger();
 }

@@ -6,7 +6,7 @@
 #include "constants.h"
 #include "colorpalette.h"
 
-#define SEL_BOX_Z 10
+class MainWindow;
 
 Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent),
@@ -100,8 +100,12 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         case Qt::Key_O:
             scale(.91,.91);
             break;
-        case Qt::Key_R:
+        case Qt::Key_R: {
             rotate(45);
+            break;
+        }
+        case Qt::Key_T:
+            emit toggleTheme();
             break;
         }
     }

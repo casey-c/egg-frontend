@@ -14,6 +14,8 @@
 #define Z_NORMAL 0
 #define Z_RAISED 10
 
+#define SEL_BOX_Z 10
+
 #define BORDER_RADIUS 10
 
 #endif // CONSTANTS_H

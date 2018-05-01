@@ -2,8 +2,11 @@
 #include "node.h"
 #include <QKeyEvent>
 #include <QDebug>
+#include <QScrollBar>
+#include "constants.h"
+#include "colorpalette.h"
 
-#define SEL_BOX_Z 10
+class MainWindow;
 
 Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent),
@@ -13,11 +16,11 @@ Canvas::Canvas(QWidget* parent) :
 {
     scene = new QGraphicsScene(this);
     scene->setItemIndexMethod(QGraphicsScene::NoIndex);
-    scene->setSceneRect(-200, -200, 400, 400);
+    //scene->setSceneRect(-200, -200, 400, 400);
+    scene->setSceneRect(0,0,10000,10000);
     setScene(scene);
 
     setCacheMode(CacheBackground);
-    setViewportUpdateMode(BoundingRectViewportUpdate);
     setRenderHint(QPainter::Antialiasing);
     setTransformationAnchor(AnchorUnderMouse);
     setMinimumSize(400, 400);
@@ -29,24 +32,27 @@ Canvas::Canvas(QWidget* parent) :
     selBox = scene->addRect(QRectF(QPointF(0,0), QSizeF(0,0)));
     selBox->setZValue(SEL_BOX_Z);
     selBox->setVisible(false);
+
+    // Scroll bars (debug testing)
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 }
 
 void Canvas::drawBackground(QPainter* painter, const QRectF &rect)
 {
     Q_UNUSED(painter)
     Q_UNUSED(rect)
-    //QRectF sceneRect = this->sceneRect();
+    QRectF sceneRect = this->sceneRect();
 
     //QLinearGradient gradient(sceneRect.topLeft(),
                              //sceneRect.bottomRight());
     //gradient.setColorAt(0, Qt::white);
     //gradient.setColorAt(1, QColor(Qt::lightGray).lighter(150));
 
-    //painter->fillRect(rect.intersected(sceneRect),
-                      //gradient);
+    painter->fillRect(rect.intersected(sceneRect), ColorPalette::canvasColor());
 
-    //painter->setBrush(Qt::NoBrush);
-    //painter->drawRect(sceneRect);
+    painter->setBrush(Qt::NoBrush);
+    painter->drawRect(sceneRect);
 }
 
 void Canvas::keyPressEvent(QKeyEvent* event)
@@ -60,6 +66,47 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         case Qt::Key_X:
           addCut();
           break;
+        case Qt::Key_H: {
+            qDebug() << "shift left";
+            //translate(-GRID_SPACING, 0);
+            //rotate(45);
+            QScrollBar* h = horizontalScrollBar();
+            h->setValue(h->value() + 2*GRID_SPACING);
+            //horizontalScrollBar()->setValue(horizontalScrollBar()->value() - GRID_SPACING);
+            break;
+        }
+        case Qt::Key_L: {
+            qDebug() << "shift right";
+            //translate(GRID_SPACING, 0);
+            QScrollBar* h = horizontalScrollBar();
+            h->setValue(h->value() - 2*GRID_SPACING);
+            break;
+        }
+        case Qt::Key_J: {
+            qDebug() << "shift down";
+            QScrollBar* v = verticalScrollBar();
+            v->setValue(v->value() - 2*GRID_SPACING);
+            break;
+        }
+        case Qt::Key_K: {
+            qDebug() << "shift up";
+            QScrollBar* v = verticalScrollBar();
+            v->setValue(v->value() + 2*GRID_SPACING);
+            break;
+        }
+        case Qt::Key_I:
+            scale(1.1,1.1);
+            break;
+        case Qt::Key_O:
+            scale(.91,.91);
+            break;
+        case Qt::Key_R: {
+            rotate(45);
+            break;
+        }
+        case Qt::Key_T:
+            emit toggleTheme();
+            break;
         }
     }
     else if (event->modifiers() & Qt::ControlModifier)
@@ -371,4 +418,13 @@ void Canvas::deleteSelection()
     delete n;
   }
   selectedNodes.clear();
+}
+
+void Canvas::updateAll() {
+    for (QGraphicsItem* i : scene->items() ) {
+        Node* n = dynamic_cast<Node*>(i);
+        if (n != nullptr)
+            n->update();
+    }
+    invalidateScene(sceneRect());
 }

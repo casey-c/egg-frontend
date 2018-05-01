@@ -1,8 +1,6 @@
 #ifndef NODE_H
 #define NODE_H
 
-#include "quantumbool.h"
-
 #include <QGraphicsObject>
 #include <QRadialGradient>
 #include <QGraphicsDropShadowEffect>
@@ -49,6 +47,8 @@ public:
     void selectThis();
     void deselectThis();
     void selectAllKids();
+    void colorDueToSelectedParent();
+    void removeColorDueToUnselectedParent();
 
     static void setSelectionFromBox(Node* root, QRectF selBox);
 
@@ -73,11 +73,10 @@ private:
     bool highlighted;
     bool mouseDown;
 
-    QRadialGradient gradDefault;
-    QRadialGradient gradHighlighted;
-    QRadialGradient gradClicked;
-
-    QRadialGradient gradSelected;
+    //QRadialGradient gradDefault;
+    //QRadialGradient gradHighlighted;
+    //QRadialGradient gradClicked;
+    //QRadialGradient gradSelected;
 
     QGraphicsDropShadowEffect* shadow;
 
@@ -92,7 +91,7 @@ private:
     QFont font;
 
     // Selection
-    bool selected;
+    bool selected, parentSelected;
 
     // Change parent
     bool ghost;

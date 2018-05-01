@@ -1,5 +1,7 @@
 #include "canvas.h"
 #include "node.h"
+#include "colorpalette.h"
+#include "constants.h"
 
 #include <QPainter>
 #include <QGraphicsDropShadowEffect>
@@ -9,18 +11,6 @@
 #include <QDebug>
 #include <QQueue>
 
-#define GRID_SPACING 16
-#define STROKE_ADJ 2
-#define COLLISION_OFFSET (GRID_SPACING / 2) - 1
-
-#define EMPTY_CUT_SIZE (4 * GRID_SPACING)
-#define STATEMENT_SIZE (2 * GRID_SPACING)
-#define BIG_NUMBER 999999999
-
-#define Z_NORMAL 0
-#define Z_RAISED 10
-
-#define BORDER_RADIUS 10
 
 // Forward declarations for helper functions (implementation located at end)
 QPointF snapPoint(const QPointF &pt);
@@ -61,6 +51,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     mouseDown(false),
     mouseOffset(0, 0),
     selected(false),
+    parentSelected(false),
     ghost(false)
 {
     // Drop shadow on click and drag
@@ -85,29 +76,29 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     }
 
     // Colors
-    gradDefault = QRadialGradient( drawBox.x() + 3,
-                                   drawBox.y() + 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradDefault.setColorAt(0, QColor(249, 249, 249));
-    gradDefault.setColorAt(1, QColor(249, 249, 249));
+    //gradDefault = QRadialGradient( drawBox.x() + 3,
+                                   //drawBox.y() + 3,
+                                   //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradDefault.setColorAt(0, QColor(249, 249, 249));
+    //gradDefault.setColorAt(1, QColor(249, 249, 249));
 
-    gradHighlighted = QRadialGradient( drawBox.x() + 3,
-                                       drawBox.y() + 3,
-                                       (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradHighlighted.setColorAt(0, QColor(240, 240, 240));
-    gradHighlighted.setColorAt(1, QColor(210, 210, 210));
+    //gradHighlighted = QRadialGradient( drawBox.x() + 3,
+                                       //drawBox.y() + 3,
+                                       //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradHighlighted.setColorAt(0, QColor(240, 240, 240));
+    //gradHighlighted.setColorAt(1, QColor(210, 210, 210));
 
-    gradClicked = QRadialGradient( drawBox.x() + 3,
-                                   drawBox.y() + 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradClicked.setColorAt(0, QColor(210, 210, 210));
-    gradClicked.setColorAt(1, QColor(240, 240, 240));
+    //gradClicked = QRadialGradient( drawBox.x() + 3,
+                                   //drawBox.y() + 3,
+                                   //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradClicked.setColorAt(0, QColor(210, 210, 210));
+    //gradClicked.setColorAt(1, QColor(240, 240, 240));
 
-    gradSelected = QRadialGradient( drawBox.x() + 3,
-                                    drawBox.y() + 3,
-                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradSelected.setColorAt(0, QColor(110, 226, 218));
-    gradSelected.setColorAt(1, QColor(0, 209, 140));
+    //gradSelected = QRadialGradient( drawBox.x() + 3,
+                                    //drawBox.y() + 3,
+                                    //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradSelected.setColorAt(0, QColor(110, 226, 218));
+    //gradSelected.setColorAt(1, QColor(0, 209, 140));
 }
 
 /* Statement constructor */
@@ -120,6 +111,7 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     mouseOffset(0, 0),
     letter(s),
     selected(false),
+    parentSelected(false),
     ghost(false)
 {
     // Qt flags
@@ -140,29 +132,29 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     drawBox = QRectF(pt, br);
 
     // Color palette
-    gradDefault = QRadialGradient( drawBox.x() + 3,
-                                   drawBox.y() + 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradDefault.setColorAt(0, QColor(0, 0, 0, 0));
-    gradDefault.setColorAt(1, QColor(0, 0, 0, 0));
+    //gradDefault = QRadialGradient( drawBox.x() + 3,
+                                   //drawBox.y() + 3,
+                                   //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradDefault.setColorAt(0, QColor(0, 0, 0, 0));
+    //gradDefault.setColorAt(1, QColor(0, 0, 0, 0));
 
-    gradHighlighted = QRadialGradient( drawBox.x() + 3,
-                                       drawBox.y() + 3,
-                                       (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradHighlighted.setColorAt(0, QColor(240, 240, 240));
-    gradHighlighted.setColorAt(1, QColor(210, 210, 210));
+    //gradHighlighted = QRadialGradient( drawBox.x() + 3,
+                                       //drawBox.y() + 3,
+                                       //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradHighlighted.setColorAt(0, QColor(240, 240, 240));
+    //gradHighlighted.setColorAt(1, QColor(210, 210, 210));
 
-    gradClicked = QRadialGradient( drawBox.x() + 3,
-                                   drawBox.y() + 3,
-                                   (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradClicked.setColorAt(0, QColor(210, 210, 210));
-    gradClicked.setColorAt(1, QColor(240, 240, 240));
+    //gradClicked = QRadialGradient( drawBox.x() + 3,
+                                   //drawBox.y() + 3,
+                                   //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradClicked.setColorAt(0, QColor(210, 210, 210));
+    //gradClicked.setColorAt(1, QColor(240, 240, 240));
 
-    gradSelected = QRadialGradient( drawBox.x() + 3,
-                                    drawBox.y() + 3,
-                                    (dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
-    gradSelected.setColorAt(0, QColor(110, 226, 218));
-    gradSelected.setColorAt(1, QColor(0, 209, 140));
+    //gradSelected = QRadialGradient( drawBox.x() + 3,
+                                    //drawBox.y() + 3,
+                                    //(dist(drawBox.topLeft(), drawBox.bottomRight()) * 2 ));
+    //gradSelected.setColorAt(0, QColor(110, 226, 218));
+    //gradSelected.setColorAt(1, QColor(0, 209, 140));
 
     // Statement font
     font = QFont();
@@ -185,6 +177,9 @@ Node::~Node()
 
 Node* Node::addChildCut(QPointF pt)
 {
+    if (isStatement())
+        return nullptr;
+
     QList<QPointF> bloom = constructAddBloom(pt);
     QPointF finalPoint = findPoint(bloom,
                                    qreal(EMPTY_CUT_SIZE),
@@ -202,6 +197,9 @@ Node* Node::addChildCut(QPointF pt)
 
 Node* Node::addChildStatement(QPointF pt, QString t)
 {
+    if (isStatement())
+        return nullptr;
+
     QList<QPointF> bloom = constructAddBloom(pt);
     QPointF finalPoint = findPoint(bloom,
                                    qreal(STATEMENT_SIZE),
@@ -250,6 +248,8 @@ void Node::removeHighlight()
 void Node::selectThis()
 {
     selected = true;
+    for (Node* n : children)
+        n->colorDueToSelectedParent();
     update();
 }
 
@@ -259,6 +259,8 @@ void Node::selectThis()
 void Node::deselectThis()
 {
     selected = false;
+    for (Node* n : children)
+        n->removeColorDueToUnselectedParent();
     update();
 }
 
@@ -277,6 +279,20 @@ void Node::toggleSelection()
         canvas->deselectNode(this);
     else
         canvas->selectNode(this);
+}
+
+void Node::colorDueToSelectedParent() {
+    parentSelected = true;
+    for (Node* n : children)
+        n->colorDueToSelectedParent();
+    update();
+}
+
+void Node::removeColorDueToUnselectedParent() {
+    parentSelected = false;
+    for (Node* n : children)
+        n->removeColorDueToUnselectedParent();
+    update();
 }
 
 /*
@@ -366,17 +382,20 @@ void Node::paint(QPainter* painter,
 
     if (isStatement())
         painter->setPen(QPen(QColor(0,0,0,0)));
+    else
+        painter->setPen(QPen(ColorPalette::strokeColor()));
 
-    if (selected)
-        painter->setBrush(QBrush(gradSelected));
+    if (selected || parentSelected)
+        //painter->setBrush(QBrush(gradSelected));
+        painter->setBrush(QBrush(ColorPalette::selectColor()));
     else
     {
         if (mouseDown)
-            painter->setBrush(QBrush(gradClicked));
+            painter->setBrush(QBrush(ColorPalette::mouseDownColor()));
         else if (highlighted)
-            painter->setBrush(QBrush(gradHighlighted));
+            painter->setBrush(QBrush(ColorPalette::highlightColor()));
         else
-            painter->setBrush(QBrush(gradDefault));
+            painter->setBrush(QBrush(ColorPalette::defaultColor()));
     }
 
     if (ghost)
@@ -388,7 +407,7 @@ void Node::paint(QPainter* painter,
 
     if ( isStatement() )
     {
-        painter->setPen(QPen(QColor(0,0,0,255)));
+        painter->setPen(QPen(ColorPalette::fontColor()));
         painter->setFont(font);
         painter->drawText( drawBox, Qt::AlignCenter, letter );
     }
@@ -915,8 +934,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         // No movement
         if (bloom.empty())
         {
-            if (sel.size() == 1)
-                canvas->clearSelection();
+            if (sel.size() == 1) canvas->clearSelection();
             return;
         }
 
@@ -947,8 +965,11 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             }
         }
 
-        if (sel.size() == 1)
-            canvas->clearSelection();
+        // not sure if i like this, but it's needed for now (lazy coding made
+        // selections basically mandatory; flickers if constantly selecting/
+        // deselecting when moving a single object -- can probably be "fixed"
+        // with some minimal effort, but idk if needed)
+        if (sel.size() == 1) canvas->clearSelection();
     }
 }
 

@@ -107,6 +107,10 @@ void Canvas::keyPressEvent(QKeyEvent* event)
         case Qt::Key_T:
             emit toggleTheme();
             break;
+        case Qt::Key_S:
+            qDebug() << "surround with cut";
+            surroundNodesWithCut();
+            break;
         }
     }
     else if (event->modifiers() & Qt::ControlModifier)
@@ -278,6 +282,33 @@ void Canvas::addPlaceholder()
   setHighlight(n);
 }
 
+void Canvas::surroundNodesWithCut() {
+    if (selectedNodes.empty()) {
+        if (highlighted == root)
+            return;
+        else
+            selectNode(highlighted);
+    }
+
+    //selectNode(highlighted);
+    Node* par = selectedNodes.first()->getParent();
+
+    qDebug() << "lastMousePos" << lastMousePos.x() << lastMousePos.y();
+
+    Node* n = par->addChildCut(lastMousePos);
+    if (par == root)
+        scene->addItem(n);
+
+    qDebug() << "created node " << n->getID();
+
+    for (Node* s : selectedNodes) {
+       n->adoptChild(s);
+    }
+
+    n->updateAncestors();
+    clearSelection();
+}
+
 
 /// Debug Bounds ///
 
@@ -353,6 +384,10 @@ void Canvas::selectNode(Node* n)
   // Make sure we don't add the same node twice
   if (selectedNodes.contains(n))
     return;
+
+  // Don't want to select root
+  if (n == root)
+      return;
 
   // Ensure all nodes in the selection share the same parent
   if (!selectedNodes.empty())

@@ -52,6 +52,11 @@ public:
 
     static void setSelectionFromBox(Node* root, QRectF selBox);
 
+    void adoptChild(Node* n);
+    void updateAncestors();
+
+    int getID() { return myID; }
+
 private:
 
     //////////////
@@ -126,7 +131,6 @@ private:
     QRectF toDraw(QRectF collision) const;
     QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
     QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
-    void updateAncestors();
 
     // Collision Checking
     static bool checkPotential(QList<Node*> sel, QPointF pt);

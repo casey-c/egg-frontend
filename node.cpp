@@ -471,6 +471,8 @@ QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
  */
 void Node::updateAncestors()
 {
+    qDebug() << "node " << myID << "updating ancestors";
+
     if (isRoot())
         return;
 
@@ -486,12 +488,16 @@ void Node::updateAncestors()
          myNewDrawBox.right() != sceneDraw.right() ||
          myNewDrawBox.bottom() != sceneDraw.bottom() )
     {
+        qDebug() << "drawbox did change";
         // New draw box, so we have to update it
         QPointF tl = mapFromScene(myNewDrawBox.topLeft());
         QPointF br = mapFromScene(myNewDrawBox.bottomRight());
 
         setDrawBoxFromPotential(QRectF(tl, br));
         parent->updateAncestors();
+    }
+    else {
+        qDebug() << "drawbox stayed the same";
     }
 
 }
@@ -1022,6 +1028,16 @@ void Node::lowerAllAncestors()
     }
 }
 
+void Node::adoptChild(Node* n) {
+    Node* oldParent = n->getParent();
+    if (oldParent != nullptr) {
+        // Remove the old connection
+        oldParent->children.removeOne(n);
+    }
+    n->parent = this;
+    n->setParentItem(this);
+    children.append(n);
+}
 
 ///////////////
 /// Helpers ///

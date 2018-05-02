@@ -32,6 +32,8 @@ public:
     QList<Node*> selectionIncluding(Node* n);
     bool hasAnySelectedNodes();
 
+    void surroundNodesWithCut();
+
     void removeFromScene(Node* n);
     void deleteSelection();
 

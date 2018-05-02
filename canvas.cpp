@@ -312,7 +312,6 @@ void Canvas::surroundNodesWithCut() {
     clearSelection();
     highlightNode(n);
     n->updateAncestors();
-    n->update();
 }
 
 void Canvas::highlightNode(Node* n) {
@@ -442,32 +441,33 @@ bool Canvas::hasAnySelectedNodes()
 
 // TODO: make it selection based, only works on highlight right now
 void Canvas::deleteCutAndSaveOrphans() {
-    if (highlighted == nullptr || !highlighted->isCut())
-        return;
+    if (selectedNodes.empty())
+        selectNode(highlighted);
 
-    Node* par = highlighted->getParent();
-
-    QList<Node*> orphans = highlighted->getChildren();
-
-    qDebug() << "highlighted is "
-             << highlighted->getID()
-             << "with "
-             << orphans.size() << "kids";
-
-
-    for (Node* o : orphans) {
-        qDebug() << "saving orphan" << o->getID();
-        par->adoptChild(o);
-
-        if (par->isRoot())
-            scene->addItem(o);
+    // Can't delete non-cuts
+    for (Node* n : selectedNodes) {
+        if (!n->isCut())
+            return;
     }
 
-    clearSelection();
-    selectNode(highlighted);
-    deleteSelection();
+    for (Node* n : selectedNodes) {
+        Node* par = n->getParent();
 
-    highlightNode(par);
+        QList<Node*> orphans = n->getChildren();
+        for (Node* o : orphans) {
+            qDebug() << "saving orphan" << o->getID();
+            o->removeColorDueToUnselectedParent();
+            par->adoptChild(o);
+
+            if (par->isRoot())
+                scene->addItem(o);
+        }
+    }
+
+    //highlightNode(highlighted->getParent());
+    deleteSelection();
+    qDebug() << "clearing selection";
+    clearSelection();
 }
 
 
@@ -492,8 +492,8 @@ void Canvas::deleteSelection()
   // Delete everything
   for (Node* n : selectedNodes)
   {
-    scene->removeItem(n);
-    delete n;
+      scene->removeItem(n);
+      delete n;
   }
   selectedNodes.clear();
 }

@@ -103,6 +103,7 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
 
 /* Statement constructor */
 Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
+    myID(globalID++),
     canvas(can),
     parent(par),
     type(Statement),
@@ -755,6 +756,8 @@ void Node::setDrawBoxFromPotential(QRectF potDraw)
 
 void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << "clicked on node " << myID << "sel is " << selected;
+
     if (event->buttons() & Qt::LeftButton)
     {
         if (event->modifiers() & Qt::AltModifier)

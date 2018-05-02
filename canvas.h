@@ -33,6 +33,7 @@ public:
     bool hasAnySelectedNodes();
 
     void surroundNodesWithCut();
+    void deleteCutAndSaveOrphans();
 
     void removeFromScene(Node* n);
     void deleteSelection();

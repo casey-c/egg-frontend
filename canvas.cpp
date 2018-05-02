@@ -111,6 +111,10 @@ void Canvas::keyPressEvent(QKeyEvent* event)
             qDebug() << "surround with cut";
             surroundNodesWithCut();
             break;
+        case Qt::Key_E:
+            qDebug() << "erase cut but keep kids";
+            deleteCutAndSaveOrphans();
+            break;
         }
     }
     else if (event->modifiers() & Qt::ControlModifier)
@@ -425,6 +429,36 @@ QList<Node*> Canvas::selectionIncluding(Node* n)
 bool Canvas::hasAnySelectedNodes()
 {
   return !selectedNodes.empty();
+}
+
+// TODO: make it selection based, only works on highlight right now
+void Canvas::deleteCutAndSaveOrphans() {
+    if (highlighted == nullptr || !highlighted->isCut())
+        return;
+
+    Node* par = highlighted->getParent();
+
+    QList<Node*> orphans = highlighted->getChildren();
+
+    qDebug() << "highlighted is "
+             << highlighted->getID()
+             << "with "
+             << orphans.size() << "kids";
+
+
+    for (Node* o : orphans) {
+        qDebug() << "saving orphan" << o->getID();
+        par->adoptChild(o);
+
+        if (par->isRoot())
+            scene->addItem(o);
+    }
+
+    clearSelection();
+    selectNode(highlighted);
+    deleteSelection();
+    highlighted = par;
+    //updateAll();
 }
 
 

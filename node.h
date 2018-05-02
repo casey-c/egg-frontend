@@ -38,6 +38,7 @@ public:
 
     // Getters
     Node* getParent() const { return parent; }
+    QList<Node*> getChildren() const { return children; }
     Node* getRightSibling();
     Node* getLeftSibling();
     Node* getChild();

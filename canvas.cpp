@@ -111,6 +111,9 @@ void Canvas::keyPressEvent(QKeyEvent* event)
             qDebug() << "surround with cut";
             surroundNodesWithCut();
             break;
+        case Qt::Key_A:
+            highlighted->selectAllKids();
+            break;
         case Qt::Key_E:
             qDebug() << "erase cut but keep kids";
             deleteCutAndSaveOrphans();
@@ -121,9 +124,6 @@ void Canvas::keyPressEvent(QKeyEvent* event)
     {
         switch(event->key())
         {
-        case Qt::Key_A:
-          highlighted->selectAllKids();
-          break;
         case Qt::Key_B:
           {
             showBounds = !showBounds;
@@ -309,8 +309,17 @@ void Canvas::surroundNodesWithCut() {
        n->adoptChild(s);
     }
 
-    n->updateAncestors();
     clearSelection();
+    highlightNode(n);
+    n->updateAncestors();
+    n->update();
+}
+
+void Canvas::highlightNode(Node* n) {
+    highlighted->removeHighlight();
+    highlighted = n;
+    n->setAsHighlight();
+    n->update();
 }
 
 
@@ -457,8 +466,8 @@ void Canvas::deleteCutAndSaveOrphans() {
     clearSelection();
     selectNode(highlighted);
     deleteSelection();
-    highlighted = par;
-    //updateAll();
+
+    highlightNode(par);
 }
 
 

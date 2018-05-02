@@ -85,6 +85,7 @@ private:
     void highlightRight();
     void highlightLeft();
     void highlightParent();
+    void highlightNode(Node* n);
 
     // Selection
     QList<Node*> selectedNodes;

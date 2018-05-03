@@ -61,6 +61,7 @@ private:
     QPointF selStart;
     bool mouseShiftPress;
     bool noMouseMovement;
+    bool setHighlightByKeyboard;
 
     ///////////////
     /// Methods ///

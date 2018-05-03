@@ -12,6 +12,7 @@ Canvas::Canvas(QWidget* parent) :
     QGraphicsView(parent),
     mouseShiftPress(false),
     noMouseMovement(false),
+    setHighlightByKeyboard(false),
     showBounds(false)
 {
     scene = new QGraphicsScene(this);
@@ -177,29 +178,34 @@ void Canvas::keyPressEvent(QKeyEvent* event)
 
 void Canvas::mouseMoveEvent(QMouseEvent* event)
 {
-  if (mouseShiftPress)
-  {
-    QPointF pt = mapToScene(event->pos());
+    if (mouseShiftPress)
+    {
+        QPointF pt = mapToScene(event->pos());
 
-    qreal minX = qMin(pt.x(), selStart.x());
-    qreal minY = qMin(pt.y(), selStart.y());
+        qreal minX = qMin(pt.x(), selStart.x());
+        qreal minY = qMin(pt.y(), selStart.y());
 
-    qreal width = qAbs(pt.x() - selStart.x());
-    qreal height = qAbs(pt.y() - selStart.y());
+        qreal width = qAbs(pt.x() - selStart.x());
+        qreal height = qAbs(pt.y() - selStart.y());
 
-    // Give a little leeway for clicking
-    if (width > 2 || height > 2)
-      noMouseMovement = false;
+        // Give a little leeway for clicking
+        if (width > 2 || height > 2)
+            noMouseMovement = false;
 
-    selBox->setRect(QRectF(QPointF(minX, minY), QSize(width, height)));
+        selBox->setRect(QRectF(QPointF(minX, minY), QSize(width, height)));
 
-    selBox->setVisible(true);
-  }
-  else
-  {
-    lastMousePos = mapToScene(event->pos());
-  }
-  QGraphicsView::mouseMoveEvent(event);
+        selBox->setVisible(true);
+    }
+    else
+    {
+        if (setHighlightByKeyboard) {
+            qDebug() << "mouse moved canvas and keyboard mode";
+            setHighlightByKeyboard = false;
+            highlightNode(root);
+        }
+        lastMousePos = mapToScene(event->pos());
+    }
+    QGraphicsView::mouseMoveEvent(event);
 }
 
 void Canvas::mousePressEvent(QMouseEvent* event)
@@ -474,7 +480,6 @@ void Canvas::deleteCutAndSaveOrphans() {
         }
     }
 
-    //highlightNode(highlighted->getParent());
     deleteSelection();
     qDebug() << "clearing selection";
     clearSelection();
@@ -498,6 +503,7 @@ void Canvas::deleteSelection()
 
   // Update highlight
   highlightNode(selectedNodes.first()->getParent());
+  setHighlightByKeyboard = true;
 
   // Delete everything
   for (Node* n : selectedNodes)

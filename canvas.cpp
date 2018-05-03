@@ -499,6 +499,10 @@ void Canvas::removeFromScene(Node* n)
   delete n;
 }
 
+void Canvas::addNodeToScene(Node* n) {
+    scene->addItem(n);
+}
+
 void Canvas::deleteSelection()
 {
   if (selectedNodes.empty() || selectedNodes.first()->isRoot() )

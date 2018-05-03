@@ -42,6 +42,8 @@ public:
 
     void updateAll();
 
+    void addNodeToScene(Node* n);
+
 signals:
     void toggleTheme();
 

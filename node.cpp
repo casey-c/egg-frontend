@@ -800,13 +800,20 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         if (newParent != parent)
         {
             // Remove us from the old
-            parent->children.removeOne(this);
-            qDebug() << "removed from old parent";
-            parent->updateAncestors();
+            //parent->children.removeOne(this);
+            //qDebug() << "removed from old parent";
+            //parent->updateAncestors();
 
             // Put us in the new
             QRectF sceneDraw = getSceneDraw();
+            newParent->adoptChild(this);
+            if (newParent->isRoot())
+                canvas->addNodeToScene(this);
+
+
             //canvas->addGreenBound(sceneDraw);
+
+            /*
             parent = newParent;
             parent->children.append(this);
 
@@ -816,9 +823,19 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                 // may be the source of the crash on exit
             }
             else
-                setParentItem(parent);
+                setParentItem(newParent);
+            */
 
             // Move us correctly
+            QRectF newSceneDraw = getSceneDraw();
+            qreal dx = sceneDraw.left() - newSceneDraw.left();
+            qreal dy = sceneDraw.top() - newSceneDraw.top();
+            moveBy(dx, dy);
+
+            // Update the new parent to redraw
+            newParent->updateAncestors();
+
+#if 0
             QPointF tl, br;
 
             if (!parent->isRoot())
@@ -882,6 +899,7 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             //update();
 
             parent->updateAncestors();
+#endif
         }
         else
         {

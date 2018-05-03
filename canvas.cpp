@@ -59,8 +59,11 @@ void Canvas::drawBackground(QPainter* painter, const QRectF &rect)
 void Canvas::keyPressEvent(QKeyEvent* event)
 {
     QGraphicsView::keyPressEvent(event);
+    QString key = event->text();
+    qDebug() << "key pressed" << key;
 
-    if (event->modifiers() & Qt::ShiftModifier)
+    if ((event->modifiers() & Qt::ShiftModifier) ||
+        (event->text().length() > 0 && event->text().at(0).isUpper()))
     {
         switch(event->key())
         {

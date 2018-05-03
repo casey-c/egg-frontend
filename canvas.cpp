@@ -456,11 +456,21 @@ void Canvas::deleteCutAndSaveOrphans() {
         QList<Node*> orphans = n->getChildren();
         for (Node* o : orphans) {
             qDebug() << "saving orphan" << o->getID();
+            QRectF oSceneDraw = o->getSceneDraw();
+
             o->removeColorDueToUnselectedParent();
             par->adoptChild(o);
 
             if (par->isRoot())
                 scene->addItem(o);
+
+            // Fix the position into the new coords
+            QRectF newScene = o->getSceneDraw();
+
+            qreal dx = oSceneDraw.left() - newScene.left();
+            qreal dy = oSceneDraw.top() - newScene.top();
+
+            o->moveBy(dx,dy);
         }
     }
 

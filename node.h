@@ -58,6 +58,8 @@ public:
 
     int getID() { return myID; }
 
+    QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
+
 private:
 
     //////////////
@@ -131,7 +133,6 @@ private:
     QRectF toCollision(QRectF draw) const;
     QRectF toDraw(QRectF collision) const;
     QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
-    QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
 
     // Collision Checking
     static bool checkPotential(QList<Node*> sel, QPointF pt);

@@ -32,12 +32,17 @@ public:
     QList<Node*> selectionIncluding(Node* n);
     bool hasAnySelectedNodes();
 
+    void surroundNodesWithCut();
+    void deleteCutAndSaveOrphans();
+
     void removeFromScene(Node* n);
     void deleteSelection();
 
     Node* getRoot() { return root; }
 
     void updateAll();
+
+    void addNodeToScene(Node* n);
 
 signals:
     void toggleTheme();
@@ -58,6 +63,7 @@ private:
     QPointF selStart;
     bool mouseShiftPress;
     bool noMouseMovement;
+    bool setHighlightByKeyboard;
 
     ///////////////
     /// Methods ///
@@ -82,6 +88,7 @@ private:
     void highlightRight();
     void highlightLeft();
     void highlightParent();
+    void highlightNode(Node* n);
 
     // Selection
     QList<Node*> selectedNodes;

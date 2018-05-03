@@ -38,6 +38,7 @@ public:
 
     // Getters
     Node* getParent() const { return parent; }
+    QList<Node*> getChildren() const { return children; }
     Node* getRightSibling();
     Node* getLeftSibling();
     Node* getChild();
@@ -51,6 +52,13 @@ public:
     void removeColorDueToUnselectedParent();
 
     static void setSelectionFromBox(Node* root, QRectF selBox);
+
+    void adoptChild(Node* n);
+    void updateAncestors();
+
+    int getID() { return myID; }
+
+    QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
 
 private:
 
@@ -125,8 +133,6 @@ private:
     QRectF toCollision(QRectF draw) const;
     QRectF toDraw(QRectF collision) const;
     QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
-    QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
-    void updateAncestors();
 
     // Collision Checking
     static bool checkPotential(QList<Node*> sel, QPointF pt);

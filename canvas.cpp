@@ -497,7 +497,7 @@ void Canvas::deleteSelection()
     return;
 
   // Update highlight
-  highlighted = selectedNodes.first()->getParent();
+  highlightNode(selectedNodes.first()->getParent());
 
   // Delete everything
   for (Node* n : selectedNodes)

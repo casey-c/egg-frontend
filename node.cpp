@@ -1054,6 +1054,7 @@ void Node::adoptChild(Node* n) {
     if (oldParent != nullptr) {
         // Remove the old connection
         oldParent->children.removeOne(n);
+        oldParent->updateAncestors();
     }
     n->parent = this;
     n->setParentItem(this);

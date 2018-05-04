@@ -54,7 +54,10 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     mouseOffset(0, 0),
     selected(false),
     parentSelected(false),
-    ghost(false)
+    ghost(false),
+    newParent(nullptr),
+    newCopy(nullptr),
+    target(false)
 {
     // Drop shadow on click and drag
     shadow = new QGraphicsDropShadowEffect(this);
@@ -117,7 +120,10 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     letter(s),
     selected(false),
     parentSelected(false),
-    ghost(false)
+    ghost(false),
+    newParent(nullptr),
+    newCopy(nullptr),
+    target(false)
 {
     // Qt flags
     setFlag(ItemSendsGeometryChanges);
@@ -403,17 +409,15 @@ void Node::paint(QPainter* painter,
         painter->setPen(QPen(ColorPalette::strokeColor()));
 
     if (selected || parentSelected)
-        //painter->setBrush(QBrush(gradSelected));
         painter->setBrush(QBrush(ColorPalette::selectColor()));
+    else if (target)
+        painter->setBrush(QBrush(ColorPalette::targetColor()));
+    else if (mouseDown)
+        painter->setBrush(QBrush(ColorPalette::mouseDownColor()));
+    else if (highlighted)
+        painter->setBrush(QBrush(ColorPalette::highlightColor()));
     else
-    {
-        if (mouseDown)
-            painter->setBrush(QBrush(ColorPalette::mouseDownColor()));
-        else if (highlighted)
-            painter->setBrush(QBrush(ColorPalette::highlightColor()));
-        else
-            painter->setBrush(QBrush(ColorPalette::defaultColor()));
-    }
+        painter->setBrush(QBrush(ColorPalette::defaultColor()));
 
     if (ghost || copying)
         setOpacity(0.5);
@@ -526,6 +530,8 @@ Node* Node::copyMeToParent() {
             }
         }
     }
+
+    copy->locked = true;
 
     if (parent->isRoot())
         canvas->addNodeToScene(copy);
@@ -836,13 +842,11 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
         else if (event->modifiers() & Qt::ControlModifier) {
             qDebug() << "copying";
+            canvas->clearSelection(); // TODO: make copying copy a selection
             copying = true;
             locked = true;
 
-            canvas->addRedBound(getSceneDraw());
-
-            //Node* copy = copyMeToParent();
-            copyMeToParent();
+            newCopy = copyMeToParent();
             raiseAllAncestors();
         }
 
@@ -864,9 +868,14 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     mouseDown = false;
     shadow->setEnabled(false);
 
-    if (ghost) {
-        ghost = false;
+    if (ghost || copying) {
+        copying = ghost = false;
         lowerAllAncestors();
+
+        if (newParent != nullptr && newParent->target) {
+            newParent->target = false;
+            newParent->update();
+        }
 
         if (newParent != parent) {
             QRectF oldSceneDraw = getSceneDraw();
@@ -888,37 +897,14 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             qDebug() << "Moved around in same parent";
             parent->updateAncestors();
         }
-    }
-    else if (copying) {
-        qDebug() << "finished copy";
-        copying = false;
-        locked = false;
-        lowerAllAncestors();
 
-        if (newParent != parent) {
-            QRectF oldSceneDraw = getSceneDraw();
-
-            // Change parents
-            newParent->adoptChild(this);
-            if (newParent->isRoot())
-                canvas->addNodeToScene(this);
-
-            // Update to the new coordinate system
-            QRectF newSceneDraw = getSceneDraw();
-            qreal dx = oldSceneDraw.left() - newSceneDraw.left();
-            qreal dy = oldSceneDraw.top() - newSceneDraw.top();
-            moveBy(dx, dy);
-
-            newParent->updateAncestors();
-        }
-        else {
-            qDebug() << "Moved around in same parent";
-            parent->updateAncestors();
-        }
+        // Unlock the copy
+        if (newCopy != nullptr)
+            newCopy->locked = false;
+        newCopy = nullptr;
     }
 
     update();
-
     QGraphicsObject::mouseReleaseEvent(event);
 }
 
@@ -979,8 +965,20 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             // Check
             if (ghost || copying)
             {
+                if (newParent != nullptr && newParent->target) {
+                    newParent->target = false;
+                    newParent->update();
+                }
+
                 Node* collider = determineNewParent(event->scenePos());
                 newParent = collider;
+
+                if (newParent != nullptr && !newParent->target && !newParent->isRoot()) {
+                    newParent->target = true;
+                    newParent->update();
+                }
+
+
                 //canvas->addBlueBound(collider->getSceneDraw());
                 for (Node* n : sel)
                     n->moveBy(pt.x(), pt.y());

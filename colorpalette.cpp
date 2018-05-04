@@ -19,6 +19,7 @@ void ColorPalette::setLightTheme() {
     font  = QColor(11, 11, 11);
     stroke = QColor(16,16,16);
     canvas = def;
+    target = QColor(214, 130, 130);
 }
 
 void ColorPalette::setDarkTheme() {
@@ -29,4 +30,5 @@ void ColorPalette::setDarkTheme() {
     font  = QColor(249, 249, 249);
     stroke = QColor(232,232,232);
     canvas = def;
+    target = QColor(214, 130, 130);
 }

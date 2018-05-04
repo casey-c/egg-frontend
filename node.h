@@ -113,6 +113,8 @@ private:
     void lowerAllAncestors();
 
     Node* newParent;
+    Node* newCopy;
+    bool target;
 
     // Add
     QPointF findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isStatement = false);

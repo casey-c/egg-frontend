@@ -22,8 +22,8 @@ public:
     ~Node();
 
     // Add
-    Node* addChildCut(QPointF pt);
-    Node* addChildStatement(QPointF pt, QString t);
+    Node* addChildCut(QPointF pt, bool usePrediction = true);
+    Node* addChildStatement(QPointF pt, QString t, bool usePrediction = true);
     Node* addChildPlaceholder(QPointF pt);
 
     // Highlight
@@ -38,6 +38,7 @@ public:
 
     // Getters
     Node* getParent() const { return parent; }
+    QList<Node*> getChildren() const { return children; }
     Node* getRightSibling();
     Node* getLeftSibling();
     Node* getChild();
@@ -51,6 +52,13 @@ public:
     void removeColorDueToUnselectedParent();
 
     static void setSelectionFromBox(Node* root, QRectF selBox);
+
+    void adoptChild(Node* n);
+    void updateAncestors();
+
+    int getID() { return myID; }
+
+    QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
 
 private:
 
@@ -72,6 +80,11 @@ private:
 
     bool highlighted;
     bool mouseDown;
+
+    // Copy
+    bool locked; // can accept copy events
+    bool copying;
+    Node* copyMeToParent();
 
     //QRadialGradient gradDefault;
     //QRadialGradient gradHighlighted;
@@ -100,6 +113,8 @@ private:
     void lowerAllAncestors();
 
     Node* newParent;
+    Node* newCopy;
+    bool target;
 
     // Add
     QPointF findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isStatement = false);
@@ -125,8 +140,6 @@ private:
     QRectF toCollision(QRectF draw) const;
     QRectF toDraw(QRectF collision) const;
     QRectF getSceneCollisionBox(qreal deltaX = 0, qreal deltaY = 0) const;
-    QRectF getSceneDraw(qreal deltaX = 0, qreal deltaY = 0) const;
-    void updateAncestors();
 
     // Collision Checking
     static bool checkPotential(QList<Node*> sel, QPointF pt);

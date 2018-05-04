@@ -49,10 +49,15 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     type(t),
     highlighted(false),
     mouseDown(false),
+    locked(false),
+    copying(false),
     mouseOffset(0, 0),
     selected(false),
     parentSelected(false),
-    ghost(false)
+    ghost(false),
+    newParent(nullptr),
+    newCopy(nullptr),
+    target(false)
 {
     // Drop shadow on click and drag
     shadow = new QGraphicsDropShadowEffect(this);
@@ -103,16 +108,22 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
 
 /* Statement constructor */
 Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
+    myID(globalID++),
     canvas(can),
     parent(par),
     type(Statement),
     highlighted(false),
     mouseDown(false),
+    locked(false),
+    copying(false),
     mouseOffset(0, 0),
     letter(s),
     selected(false),
     parentSelected(false),
-    ghost(false)
+    ghost(false),
+    newParent(nullptr),
+    newCopy(nullptr),
+    target(false)
 {
     // Qt flags
     setFlag(ItemSendsGeometryChanges);
@@ -175,15 +186,21 @@ Node::~Node()
         delete child;
 }
 
-Node* Node::addChildCut(QPointF pt)
+Node* Node::addChildCut(QPointF pt, bool usePrediction)
 {
     if (isStatement())
         return nullptr;
 
-    QList<QPointF> bloom = constructAddBloom(pt);
-    QPointF finalPoint = findPoint(bloom,
-                                   qreal(EMPTY_CUT_SIZE),
-                                   qreal(EMPTY_CUT_SIZE));
+    QPointF finalPoint;
+
+    if (usePrediction) {
+        QList<QPointF> bloom = constructAddBloom(pt);
+        finalPoint = findPoint(bloom,
+                               qreal(EMPTY_CUT_SIZE),
+                               qreal(EMPTY_CUT_SIZE));
+    }
+    else
+        finalPoint = snapPoint(pt);
 
     //Node* newChild = new Node(canvas, this, Cut, finalPoint);
     Node* newChild = new Node(canvas, this, Cut, mapFromScene(finalPoint));
@@ -195,15 +212,21 @@ Node* Node::addChildCut(QPointF pt)
     return newChild;
 }
 
-Node* Node::addChildStatement(QPointF pt, QString t)
+Node* Node::addChildStatement(QPointF pt, QString t, bool usePrediction)
 {
     if (isStatement())
         return nullptr;
 
-    QList<QPointF> bloom = constructAddBloom(pt);
-    QPointF finalPoint = findPoint(bloom,
-                                   qreal(STATEMENT_SIZE),
-                                   qreal(STATEMENT_SIZE));
+    QPointF finalPoint;
+
+    if (usePrediction) {
+        QList<QPointF> bloom = constructAddBloom(pt);
+        finalPoint = findPoint(bloom,
+                               qreal(STATEMENT_SIZE),
+                               qreal(STATEMENT_SIZE));
+    }
+    else
+        finalPoint = snapPoint(pt);
 
     Node* newChild = new Node(canvas, this, t, mapFromScene(finalPoint));
     children.append(newChild);
@@ -386,19 +409,17 @@ void Node::paint(QPainter* painter,
         painter->setPen(QPen(ColorPalette::strokeColor()));
 
     if (selected || parentSelected)
-        //painter->setBrush(QBrush(gradSelected));
         painter->setBrush(QBrush(ColorPalette::selectColor()));
+    else if (target)
+        painter->setBrush(QBrush(ColorPalette::targetColor()));
+    else if (mouseDown)
+        painter->setBrush(QBrush(ColorPalette::mouseDownColor()));
+    else if (highlighted)
+        painter->setBrush(QBrush(ColorPalette::highlightColor()));
     else
-    {
-        if (mouseDown)
-            painter->setBrush(QBrush(ColorPalette::mouseDownColor()));
-        else if (highlighted)
-            painter->setBrush(QBrush(ColorPalette::highlightColor()));
-        else
-            painter->setBrush(QBrush(ColorPalette::defaultColor()));
-    }
+        painter->setBrush(QBrush(ColorPalette::defaultColor()));
 
-    if (ghost)
+    if (ghost || copying)
         setOpacity(0.5);
     else
         setOpacity(1.0);
@@ -464,6 +485,61 @@ QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
 }
 
 /*
+ * Creates a copy of this node in place where the parent is. The copy is given
+ * the flag "locked" which means that it cannot be the target of the resulting
+ * copy destination.
+ *
+ * Returns the newly created node (child of the original parent / sibling of
+ * the copy target)
+ */
+Node* Node::copyMeToParent() {
+    if (isRoot())
+        return nullptr;
+
+    Node* copy;
+
+    if (isStatement()) {
+        copy = parent->addChildStatement(getSceneDraw().topLeft(), letter, false);
+    }
+    else if (isCut()) {
+        copy = parent->addChildCut(getSceneDraw().topLeft());
+
+        // Copy all children
+        QQueue<Node*> queue;
+        QQueue<Node*> parents;
+        for (Node* n : children) {
+            queue.enqueue(n);
+            parents.enqueue(copy);
+        }
+
+        while (!queue.empty()) {
+            Node* originalCurr = queue.dequeue();
+            Node* newParent = parents.dequeue();
+
+            Node* child;
+
+            if (originalCurr->isCut())
+                child = newParent->addChildCut(originalCurr->getSceneDraw().topLeft(), false);
+            else if (originalCurr->isStatement())
+                child = newParent->addChildStatement(originalCurr->getSceneDraw().topLeft(), originalCurr->letter, false);
+
+            // Recurse down
+            for (Node* originalChild : originalCurr->children) {
+                queue.enqueue(originalChild);
+                parents.enqueue(child);
+            }
+        }
+    }
+
+    copy->locked = true;
+
+    if (parent->isRoot())
+        canvas->addNodeToScene(copy);
+
+    return copy;
+}
+
+/*
  * Recursive function to update all draw boxes from child boxes.
  *
  * Call this on the parent of an added or deleted node, and it'll make sure to
@@ -471,14 +547,16 @@ QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
  */
 void Node::updateAncestors()
 {
+    qDebug() << "node " << myID << "updating ancestors";
+
     if (isRoot())
         return;
 
     QRectF myNewDrawBox = predictMySceneDraw(QList<Node*>(), QList<QRectF>());
     QRectF sceneDraw = getSceneDraw();
 
-    canvas->addRedBound(myNewDrawBox);
-    canvas->addBlueBound(sceneDraw);
+    //canvas->addRedBound(myNewDrawBox);
+    //canvas->addBlueBound(sceneDraw);
 
     // Check if any changes occur
     if ( myNewDrawBox.left() != sceneDraw.left()   ||
@@ -486,12 +564,16 @@ void Node::updateAncestors()
          myNewDrawBox.right() != sceneDraw.right() ||
          myNewDrawBox.bottom() != sceneDraw.bottom() )
     {
+        qDebug() << "drawbox did change";
         // New draw box, so we have to update it
         QPointF tl = mapFromScene(myNewDrawBox.topLeft());
         QPointF br = mapFromScene(myNewDrawBox.bottomRight());
 
         setDrawBoxFromPotential(QRectF(tl, br));
         parent->updateAncestors();
+    }
+    else {
+        qDebug() << "drawbox stayed the same";
     }
 
 }
@@ -594,7 +676,7 @@ bool Node::checkPotential(QList<Node*> changedNodes, QPointF pt)
 
         // Percolate up
         QRectF next = parent->predictMySceneDraw(changedNodes, alteredDraws);
-        parent->canvas->addRedBound(next);
+        //parent->canvas->addRedBound(next);
 
         changedNodes.clear();
         changedNodes.append(parent);
@@ -749,12 +831,22 @@ void Node::setDrawBoxFromPotential(QRectF potDraw)
 
 void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << "clicked on node " << myID << "sel is " << selected;
+
     if (event->buttons() & Qt::LeftButton)
     {
         if (event->modifiers() & Qt::AltModifier)
         {
             ghost = true;
-            //setZValue(Z_RAISED);
+            raiseAllAncestors();
+        }
+        else if (event->modifiers() & Qt::ControlModifier) {
+            qDebug() << "copying";
+            canvas->clearSelection(); // TODO: make copying copy a selection
+            copying = true;
+            locked = true;
+
+            newCopy = copyMeToParent();
             raiseAllAncestors();
         }
 
@@ -776,116 +868,43 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     mouseDown = false;
     shadow->setEnabled(false);
 
-    canvas->clearBounds();
-    canvas->clearDots();
-
-    canvas->addRedBound(getSceneDraw());
-    canvas->addBlackDot(scenePos());
-    canvas->addBlackDot(getSceneDraw().topLeft());
-
-    if (ghost)
-    {
-        ghost = false;
+    if (ghost || copying) {
+        copying = ghost = false;
         lowerAllAncestors();
 
-        if (newParent != parent)
-        {
-            // Remove us from the old
-            parent->children.removeOne(this);
-            qDebug() << "removed from old parent";
-            parent->updateAncestors();
-
-            // Put us in the new
-            QRectF sceneDraw = getSceneDraw();
-            canvas->addGreenBound(sceneDraw);
-            parent = newParent;
-            parent->children.append(this);
-
-            if (parent->isRoot())
-            {
-                setParentItem(0); //this implicitly adds to scene
-                // may be the source of the crash on exit
-            }
-            else
-                setParentItem(parent);
-
-            // Move us correctly
-            QPointF tl, br;
-
-            if (!parent->isRoot())
-            {
-                tl = parent->mapFromScene(sceneDraw.topLeft());
-                br = parent->mapFromScene(sceneDraw.bottomRight());
-            }
-            else
-            {
-                tl = sceneDraw.topLeft();
-                br = sceneDraw.bottomRight();
-            }
-
-            // Adjust for pos offset
-            //qreal dx = tl.x() - scenePos().x();
-            //qreal dy = tl.y() - scenePos().y();
-
-            qreal dx = scenePos().x();
-            qreal dy = scenePos().y();
-
-            setPos(0, 0);
-
-            dx -= scenePos().x();
-            dy -= scenePos().y();
-
-            qDebug() << "Pos changed by "
-                     << dx
-                     << ","
-                     << dy;
-
-            // This needs to percolate downward I think
-            QQueue<Node*> updateQueue;
-            for (Node* c : children)
-                updateQueue.enqueue(c);
-
-            while (!updateQueue.empty())
-            {
-                Node* curr = updateQueue.dequeue();
-                qDebug() << "Adjusting node ";
-                canvas->addBlueBound(curr->getSceneDraw());
-
-                QPointF nPos = curr->scenePos();
-                nPos.setX(nPos.x() + dx);
-                nPos.setY(nPos.y() + dy);
-                //curr->setPos(nPos);
-                curr->setPos(curr->mapFromScene(nPos));
-
-                for (Node* child : curr->children)
-                    updateQueue.enqueue(child);
-
-                canvas->addBlackBound(curr->getSceneDraw());
-            }
-
-            //tl.setX(tl.x() + dx);
-            //tl.setY(tl.y() + dy);
-            //br.setX(br.x() + dx);
-            //br.setY(br.y() + dy);
-
-            setDrawBoxFromPotential(QRectF(tl, br));
-            //parent->update();
-            //update();
-
-            parent->updateAncestors();
+        if (newParent != nullptr && newParent->target) {
+            newParent->target = false;
+            newParent->update();
         }
-        else
-        {
+
+        if (newParent != parent) {
+            QRectF oldSceneDraw = getSceneDraw();
+
+            // Change parents
+            newParent->adoptChild(this);
+            if (newParent->isRoot())
+                canvas->addNodeToScene(this);
+
+            // Update to the new coordinate system
+            QRectF newSceneDraw = getSceneDraw();
+            qreal dx = oldSceneDraw.left() - newSceneDraw.left();
+            qreal dy = oldSceneDraw.top() - newSceneDraw.top();
+            moveBy(dx, dy);
+
+            newParent->updateAncestors();
+        }
+        else {
             qDebug() << "Moved around in same parent";
             parent->updateAncestors();
         }
 
-
+        // Unlock the copy
+        if (newCopy != nullptr)
+            newCopy->locked = false;
+        newCopy = nullptr;
     }
 
-    //setZValue(Z_NORMAL);
     update();
-
     QGraphicsObject::mouseReleaseEvent(event);
 }
 
@@ -944,11 +963,23 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         for (QPointF pt : bloom)
         {
             // Check
-            if (ghost)
+            if (ghost || copying)
             {
+                if (newParent != nullptr && newParent->target) {
+                    newParent->target = false;
+                    newParent->update();
+                }
+
                 Node* collider = determineNewParent(event->scenePos());
                 newParent = collider;
-                canvas->addBlueBound(collider->getSceneDraw());
+
+                if (newParent != nullptr && !newParent->target && !newParent->isRoot()) {
+                    newParent->target = true;
+                    newParent->update();
+                }
+
+
+                //canvas->addBlueBound(collider->getSceneDraw());
                 for (Node* n : sel)
                     n->moveBy(pt.x(), pt.y());
                 if (sel.size() == 1)
@@ -986,13 +1017,11 @@ Node* Node::determineNewParent(QPointF pt)
 
     // TODO: rewrite this to avoid goto
 loop:
-    for (Node* n : pot)
-    {
-        if (n == this)
+    for (Node* n : pot) {
+        if (n == this || n->locked)
             continue;
 
-        if (pointInRect(pt, n->getSceneDraw()))
-        {
+        if (pointInRect(pt, n->getSceneDraw())) {
             collider = n;
             pot = collider->children;
             goto loop; // repeat loop with the new potential list
@@ -1022,6 +1051,17 @@ void Node::lowerAllAncestors()
     }
 }
 
+void Node::adoptChild(Node* n) {
+    Node* oldParent = n->getParent();
+    if (oldParent != nullptr) {
+        // Remove the old connection
+        oldParent->children.removeOne(n);
+        oldParent->updateAncestors();
+    }
+    n->parent = this;
+    n->setParentItem(this);
+    children.append(n);
+}
 
 ///////////////
 /// Helpers ///
@@ -1315,7 +1355,7 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
 
     canvas->clearBounds();
 
-    qDebug() << "--- Start for ---";
+    //qDebug() << "--- Start for ---";
     for (QPointF pt : bloom)
     {
         bool collOkay = true;
@@ -1327,7 +1367,7 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
         QRectF potDraw = QRectF(pt, bottomRight);
         QRectF potColl = toCollision(potDraw);
 
-        qDebug() << "--- Checking point ---";
+        //qDebug() << "--- Checking point ---";
         // Collision Check
         for (Node* n : children)
         {
@@ -1403,7 +1443,7 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
             growOnly.append(pt);
         }
     }
-    qDebug() << "--- end for ---";
+    //qDebug() << "--- end for ---";
 
     if (!collOnly.empty())
     {

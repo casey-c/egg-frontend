@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>[nutmeg] - alpha v0.4</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout_3">
@@ -29,7 +29,7 @@
      <x>0</x>
      <y>0</y>
      <width>711</width>
-     <height>22</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -158,10 +158,10 @@
   </action>
   <action name="actionTutorial">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
-    <string>Tutorial</string>
+    <string>Controls</string>
    </property>
   </action>
   <action name="actionGithub">
@@ -171,7 +171,7 @@
   </action>
   <action name="actionAbout">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>About</string>

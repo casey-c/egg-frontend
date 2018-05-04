@@ -23,6 +23,10 @@ private slots:
     void on_actionDark_triggered();
     void toggleTheme();
 
+    void on_actionTutorial_triggered();
+
+    void on_actionAbout_triggered();
+
 private:
     Ui::MainWindow *ui;
     Canvas* canvas;

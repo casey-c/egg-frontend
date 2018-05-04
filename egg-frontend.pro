@@ -28,14 +28,20 @@ SOURCES += \
         mainwindow.cpp \
     node.cpp \
     canvas.cpp \
-    colorpalette.cpp
+    colorpalette.cpp \
+    tutorialwindow.cpp \
+    aboutwindow.cpp
 
 HEADERS += \
         mainwindow.h \
     node.h \
     canvas.h \
     colorpalette.h \
-    constants.h
+    constants.h \
+    tutorialwindow.h \
+    aboutwindow.h
 
 FORMS += \
-        mainwindow.ui
+        mainwindow.ui \
+    tutorialwindow.ui \
+    aboutwindow.ui

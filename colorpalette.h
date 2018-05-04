@@ -20,6 +20,7 @@ public:
     static QColor fontColor() { return ColorPalette::getInstance().font; }
     static QColor strokeColor() { return ColorPalette::getInstance().stroke; }
     static QColor canvasColor() { return ColorPalette::getInstance().canvas; }
+    static QColor targetColor() { return ColorPalette::getInstance().target; }
 
     static void darkTheme() { ColorPalette::getInstance().setDarkTheme(); }
     static void lightTheme() { ColorPalette::getInstance().setLightTheme(); }
@@ -33,15 +34,7 @@ private:
     void setDarkTheme();
     void setLightTheme();
 
-    //QColor getDefault() { return def; }
-    //QColor getHighlight() { return high; }
-    //QColor getMouseDown() { return mouse; }
-    //QColor getSelected() { return sel; }
-    //QColor getFont() { return font; }
-    //QColor getStroke() { return stroke; }
-
-
-    QColor def, high, mouse, sel, font, stroke, canvas;
+    QColor def, high, mouse, sel, font, stroke, canvas, target;
 };
 
 #endif // COLORPALETTE_H

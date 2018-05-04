@@ -837,10 +837,12 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
         else if (event->modifiers() & Qt::ControlModifier) {
             qDebug() << "copying";
             copying = true;
+            locked = true;
 
             canvas->addRedBound(getSceneDraw());
 
-            Node* copy = copyMeToParent();
+            //Node* copy = copyMeToParent();
+            copyMeToParent();
             raiseAllAncestors();
         }
 
@@ -859,142 +861,62 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    qDebug() << "mouse release event";
     mouseDown = false;
     shadow->setEnabled(false);
 
-    //canvas->clearBounds();
-    //canvas->clearDots();
-
-    //canvas->addRedBound(getSceneDraw());
-    //canvas->addBlackDot(scenePos());
-    //canvas->addBlackDot(getSceneDraw().topLeft());
-
-    if (ghost)
-    {
+    if (ghost) {
         ghost = false;
         lowerAllAncestors();
 
-        if (newParent != parent)
-        {
-            // Remove us from the old
-            //parent->children.removeOne(this);
-            //qDebug() << "removed from old parent";
-            //parent->updateAncestors();
+        if (newParent != parent) {
+            QRectF oldSceneDraw = getSceneDraw();
 
-            // Put us in the new
-            QRectF sceneDraw = getSceneDraw();
+            // Change parents
             newParent->adoptChild(this);
             if (newParent->isRoot())
                 canvas->addNodeToScene(this);
 
-
-            //canvas->addGreenBound(sceneDraw);
-
-            /*
-            parent = newParent;
-            parent->children.append(this);
-
-            if (parent->isRoot())
-            {
-                setParentItem(0); //this implicitly adds to scene
-                // may be the source of the crash on exit
-            }
-            else
-                setParentItem(newParent);
-            */
-
-            // Move us correctly
+            // Update to the new coordinate system
             QRectF newSceneDraw = getSceneDraw();
-            qreal dx = sceneDraw.left() - newSceneDraw.left();
-            qreal dy = sceneDraw.top() - newSceneDraw.top();
+            qreal dx = oldSceneDraw.left() - newSceneDraw.left();
+            qreal dy = oldSceneDraw.top() - newSceneDraw.top();
             moveBy(dx, dy);
 
-            // Update the new parent to redraw
             newParent->updateAncestors();
-
-#if 0
-            QPointF tl, br;
-
-            if (!parent->isRoot())
-            {
-                tl = parent->mapFromScene(sceneDraw.topLeft());
-                br = parent->mapFromScene(sceneDraw.bottomRight());
-            }
-            else
-            {
-                tl = sceneDraw.topLeft();
-                br = sceneDraw.bottomRight();
-            }
-
-            // Adjust for pos offset
-            //qreal dx = tl.x() - scenePos().x();
-            //qreal dy = tl.y() - scenePos().y();
-
-            qreal dx = scenePos().x();
-            qreal dy = scenePos().y();
-
-            setPos(0, 0);
-
-            dx -= scenePos().x();
-            dy -= scenePos().y();
-
-            qDebug() << "Pos changed by "
-                     << dx
-                     << ","
-                     << dy;
-
-            // This needs to percolate downward I think
-            QQueue<Node*> updateQueue;
-            for (Node* c : children)
-                updateQueue.enqueue(c);
-
-            while (!updateQueue.empty())
-            {
-                Node* curr = updateQueue.dequeue();
-                qDebug() << "Adjusting node ";
-                //canvas->addBlueBound(curr->getSceneDraw());
-
-                QPointF nPos = curr->scenePos();
-                nPos.setX(nPos.x() + dx);
-                nPos.setY(nPos.y() + dy);
-                //curr->setPos(nPos);
-                curr->setPos(curr->mapFromScene(nPos));
-
-                for (Node* child : curr->children)
-                    updateQueue.enqueue(child);
-
-                //canvas->addBlackBound(curr->getSceneDraw());
-            }
-
-            //tl.setX(tl.x() + dx);
-            //tl.setY(tl.y() + dy);
-            //br.setX(br.x() + dx);
-            //br.setY(br.y() + dy);
-
-            setDrawBoxFromPotential(QRectF(tl, br));
-            //parent->update();
-            //update();
-
-            parent->updateAncestors();
-#endif
         }
-        else
-        {
+        else {
             qDebug() << "Moved around in same parent";
             parent->updateAncestors();
         }
-
-
     }
     else if (copying) {
         qDebug() << "finished copy";
         copying = false;
+        locked = false;
         lowerAllAncestors();
-        parent->updateAncestors();
+
+        if (newParent != parent) {
+            QRectF oldSceneDraw = getSceneDraw();
+
+            // Change parents
+            newParent->adoptChild(this);
+            if (newParent->isRoot())
+                canvas->addNodeToScene(this);
+
+            // Update to the new coordinate system
+            QRectF newSceneDraw = getSceneDraw();
+            qreal dx = oldSceneDraw.left() - newSceneDraw.left();
+            qreal dy = oldSceneDraw.top() - newSceneDraw.top();
+            moveBy(dx, dy);
+
+            newParent->updateAncestors();
+        }
+        else {
+            qDebug() << "Moved around in same parent";
+            parent->updateAncestors();
+        }
     }
 
-    //setZValue(Z_NORMAL);
     update();
 
     QGraphicsObject::mouseReleaseEvent(event);
@@ -1055,7 +977,7 @@ void Node::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         for (QPointF pt : bloom)
         {
             // Check
-            if (ghost)
+            if (ghost || copying)
             {
                 Node* collider = determineNewParent(event->scenePos());
                 newParent = collider;
@@ -1097,13 +1019,11 @@ Node* Node::determineNewParent(QPointF pt)
 
     // TODO: rewrite this to avoid goto
 loop:
-    for (Node* n : pot)
-    {
-        if (n == this)
+    for (Node* n : pot) {
+        if (n == this || n->locked)
             continue;
 
-        if (pointInRect(pt, n->getSceneDraw()))
-        {
+        if (pointInRect(pt, n->getSceneDraw())) {
             collider = n;
             pot = collider->children;
             goto loop; // repeat loop with the new potential list

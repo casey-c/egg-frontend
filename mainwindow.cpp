@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "colorpalette.h"
+#include "tutorialwindow.h"
+#include "aboutwindow.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -51,4 +53,16 @@ void MainWindow::toggleTheme() {
         ui->actionLight->trigger();
     else
         ui->actionDark->trigger();
+}
+
+void MainWindow::on_actionTutorial_triggered()
+{
+    TutorialWindow* window = new TutorialWindow();
+    window->show();
+}
+
+void MainWindow::on_actionAbout_triggered()
+{
+    AboutWindow* window = new AboutWindow();
+    window->show();
 }

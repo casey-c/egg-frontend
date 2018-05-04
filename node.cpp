@@ -49,6 +49,8 @@ Node::Node(Canvas* can, Node* par, NodeType t, QPointF pt) :
     type(t),
     highlighted(false),
     mouseDown(false),
+    locked(false),
+    copying(false),
     mouseOffset(0, 0),
     selected(false),
     parentSelected(false),
@@ -109,6 +111,8 @@ Node::Node(Canvas* can, Node* par, QString s, QPointF pt) :
     type(Statement),
     highlighted(false),
     mouseDown(false),
+    locked(false),
+    copying(false),
     mouseOffset(0, 0),
     letter(s),
     selected(false),
@@ -176,15 +180,21 @@ Node::~Node()
         delete child;
 }
 
-Node* Node::addChildCut(QPointF pt)
+Node* Node::addChildCut(QPointF pt, bool usePrediction)
 {
     if (isStatement())
         return nullptr;
 
-    QList<QPointF> bloom = constructAddBloom(pt);
-    QPointF finalPoint = findPoint(bloom,
-                                   qreal(EMPTY_CUT_SIZE),
-                                   qreal(EMPTY_CUT_SIZE));
+    QPointF finalPoint;
+
+    if (usePrediction) {
+        QList<QPointF> bloom = constructAddBloom(pt);
+        finalPoint = findPoint(bloom,
+                               qreal(EMPTY_CUT_SIZE),
+                               qreal(EMPTY_CUT_SIZE));
+    }
+    else
+        finalPoint = snapPoint(pt);
 
     //Node* newChild = new Node(canvas, this, Cut, finalPoint);
     Node* newChild = new Node(canvas, this, Cut, mapFromScene(finalPoint));
@@ -196,15 +206,21 @@ Node* Node::addChildCut(QPointF pt)
     return newChild;
 }
 
-Node* Node::addChildStatement(QPointF pt, QString t)
+Node* Node::addChildStatement(QPointF pt, QString t, bool usePrediction)
 {
     if (isStatement())
         return nullptr;
 
-    QList<QPointF> bloom = constructAddBloom(pt);
-    QPointF finalPoint = findPoint(bloom,
-                                   qreal(STATEMENT_SIZE),
-                                   qreal(STATEMENT_SIZE));
+    QPointF finalPoint;
+
+    if (usePrediction) {
+        QList<QPointF> bloom = constructAddBloom(pt);
+        finalPoint = findPoint(bloom,
+                               qreal(STATEMENT_SIZE),
+                               qreal(STATEMENT_SIZE));
+    }
+    else
+        finalPoint = snapPoint(pt);
 
     Node* newChild = new Node(canvas, this, t, mapFromScene(finalPoint));
     children.append(newChild);
@@ -399,7 +415,7 @@ void Node::paint(QPainter* painter,
             painter->setBrush(QBrush(ColorPalette::defaultColor()));
     }
 
-    if (ghost)
+    if (ghost || copying)
         setOpacity(0.5);
     else
         setOpacity(1.0);
@@ -462,6 +478,59 @@ QRectF Node::getSceneCollisionBox(qreal deltaX, qreal deltaY) const
 QRectF Node::getSceneDraw(qreal deltaX, qreal deltaY) const
 {
     return toDraw(getSceneCollisionBox(deltaX, deltaY));
+}
+
+/*
+ * Creates a copy of this node in place where the parent is. The copy is given
+ * the flag "locked" which means that it cannot be the target of the resulting
+ * copy destination.
+ *
+ * Returns the newly created node (child of the original parent / sibling of
+ * the copy target)
+ */
+Node* Node::copyMeToParent() {
+    if (isRoot())
+        return nullptr;
+
+    Node* copy;
+
+    if (isStatement()) {
+        copy = parent->addChildStatement(getSceneDraw().topLeft(), letter, false);
+    }
+    else if (isCut()) {
+        copy = parent->addChildCut(getSceneDraw().topLeft());
+
+        // Copy all children
+        QQueue<Node*> queue;
+        QQueue<Node*> parents;
+        for (Node* n : children) {
+            queue.enqueue(n);
+            parents.enqueue(copy);
+        }
+
+        while (!queue.empty()) {
+            Node* originalCurr = queue.dequeue();
+            Node* newParent = parents.dequeue();
+
+            Node* child;
+
+            if (originalCurr->isCut())
+                child = newParent->addChildCut(originalCurr->getSceneDraw().topLeft(), false);
+            else if (originalCurr->isStatement())
+                child = newParent->addChildStatement(originalCurr->getSceneDraw().topLeft(), originalCurr->letter, false);
+
+            // Recurse down
+            for (Node* originalChild : originalCurr->children) {
+                queue.enqueue(originalChild);
+                parents.enqueue(child);
+            }
+        }
+    }
+
+    if (parent->isRoot())
+        canvas->addNodeToScene(copy);
+
+    return copy;
 }
 
 /*
@@ -763,7 +832,15 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
         if (event->modifiers() & Qt::AltModifier)
         {
             ghost = true;
-            //setZValue(Z_RAISED);
+            raiseAllAncestors();
+        }
+        else if (event->modifiers() & Qt::ControlModifier) {
+            qDebug() << "copying";
+            copying = true;
+
+            canvas->addRedBound(getSceneDraw());
+
+            Node* copy = copyMeToParent();
             raiseAllAncestors();
         }
 
@@ -782,6 +859,7 @@ void Node::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
 void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << "mouse release event";
     mouseDown = false;
     shadow->setEnabled(false);
 
@@ -908,6 +986,12 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         }
 
 
+    }
+    else if (copying) {
+        qDebug() << "finished copy";
+        copying = false;
+        lowerAllAncestors();
+        parent->updateAncestors();
     }
 
     //setZValue(Z_NORMAL);
@@ -1353,7 +1437,7 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
 
     canvas->clearBounds();
 
-    qDebug() << "--- Start for ---";
+    //qDebug() << "--- Start for ---";
     for (QPointF pt : bloom)
     {
         bool collOkay = true;
@@ -1365,7 +1449,7 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
         QRectF potDraw = QRectF(pt, bottomRight);
         QRectF potColl = toCollision(potDraw);
 
-        qDebug() << "--- Checking point ---";
+        //qDebug() << "--- Checking point ---";
         // Collision Check
         for (Node* n : children)
         {
@@ -1441,7 +1525,7 @@ QPointF Node::findPoint(const QList<QPointF> &bloom, qreal w, qreal h, bool isSt
             growOnly.append(pt);
         }
     }
-    qDebug() << "--- end for ---";
+    //qDebug() << "--- end for ---";
 
     if (!collOnly.empty())
     {

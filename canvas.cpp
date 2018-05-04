@@ -13,7 +13,7 @@ Canvas::Canvas(QWidget* parent) :
     mouseShiftPress(false),
     noMouseMovement(false),
     setHighlightByKeyboard(false),
-    showBounds(false)
+    showBounds(true)
 {
     scene = new QGraphicsScene(this);
     scene->setItemIndexMethod(QGraphicsScene::NoIndex);

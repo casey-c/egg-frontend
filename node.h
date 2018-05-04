@@ -22,8 +22,8 @@ public:
     ~Node();
 
     // Add
-    Node* addChildCut(QPointF pt);
-    Node* addChildStatement(QPointF pt, QString t);
+    Node* addChildCut(QPointF pt, bool usePrediction = true);
+    Node* addChildStatement(QPointF pt, QString t, bool usePrediction = true);
     Node* addChildPlaceholder(QPointF pt);
 
     // Highlight
@@ -80,6 +80,11 @@ private:
 
     bool highlighted;
     bool mouseDown;
+
+    // Copy
+    bool locked; // can accept copy events
+    bool copying;
+    Node* copyMeToParent();
 
     //QRadialGradient gradDefault;
     //QRadialGradient gradHighlighted;

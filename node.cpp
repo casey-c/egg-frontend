@@ -869,7 +869,7 @@ void Node::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     shadow->setEnabled(false);
 
     if (ghost || copying) {
-        copying = ghost = false;
+        copying = ghost = locked = false;
         lowerAllAncestors();
 
         if (newParent != nullptr && newParent->target) {
@@ -1018,7 +1018,7 @@ Node* Node::determineNewParent(QPointF pt)
     // TODO: rewrite this to avoid goto
 loop:
     for (Node* n : pot) {
-        if (n == this || n->locked)
+        if (n == this || n->locked || n->isStatement())
             continue;
 
         if (pointInRect(pt, n->getSceneDraw())) {
